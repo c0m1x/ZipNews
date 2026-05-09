@@ -21,6 +21,7 @@ import io
 import json
 import os
 import re
+import socket
 import time
 import unicodedata
 import xml.etree.ElementTree as ET
@@ -73,6 +74,42 @@ SOURCES = [
         "country": "Qatar",
         "lat": 25.2854,
         "lon": 51.5310,
+    },
+    {
+        "name": "DW World",
+        "category": "news",
+        "url": "https://rss.dw.com/rdf/rss-en-world",
+        "region": "Europe",
+        "country": "Germany",
+        "lat": 52.5200,
+        "lon": 13.4050,
+    },
+    {
+        "name": "France 24 World",
+        "category": "news",
+        "url": "https://www.france24.com/en/rss",
+        "region": "Europe",
+        "country": "France",
+        "lat": 48.8566,
+        "lon": 2.3522,
+    },
+    {
+        "name": "Euronews",
+        "category": "news",
+        "url": "https://www.euronews.com/rss?level=theme&name=news",
+        "region": "Europe",
+        "country": "France",
+        "lat": 45.7640,
+        "lon": 4.8357,
+    },
+    {
+        "name": "Sky News World",
+        "category": "news",
+        "url": "https://feeds.skynews.com/feeds/rss/world.xml",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "lat": 51.5072,
+        "lon": -0.1276,
     },
     {
         "name": "Google News Portugal",
@@ -183,6 +220,42 @@ SOURCES = [
         "lon": -74.0060,
     },
     {
+        "name": "DW Business",
+        "category": "economy",
+        "url": "https://rss.dw.com/rdf/rss-en-bus",
+        "region": "Europe",
+        "country": "Germany",
+        "lat": 52.5200,
+        "lon": 13.4050,
+    },
+    {
+        "name": "France 24 Business",
+        "category": "economy",
+        "url": "https://www.france24.com/en/business/rss",
+        "region": "Europe",
+        "country": "France",
+        "lat": 48.8566,
+        "lon": 2.3522,
+    },
+    {
+        "name": "Euronews Business",
+        "category": "economy",
+        "url": "https://www.euronews.com/rss?level=theme&name=business",
+        "region": "Europe",
+        "country": "France",
+        "lat": 45.7640,
+        "lon": 4.8357,
+    },
+    {
+        "name": "Sky News Business",
+        "category": "economy",
+        "url": "https://feeds.skynews.com/feeds/rss/business.xml",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "lat": 51.5072,
+        "lon": -0.1276,
+    },
+    {
         "name": "NPR Politics",
         "category": "politics",
         "url": "https://feeds.npr.org/1014/rss.xml",
@@ -219,6 +292,33 @@ SOURCES = [
         "lon": -0.1276,
     },
     {
+        "name": "PBS Politics",
+        "category": "politics",
+        "url": "https://www.pbs.org/newshour/feeds/rss/politics",
+        "region": "North America",
+        "country": "United States",
+        "lat": 38.9072,
+        "lon": -77.0369,
+    },
+    {
+        "name": "The Hill",
+        "category": "politics",
+        "url": "https://thehill.com/feed/",
+        "region": "North America",
+        "country": "United States",
+        "lat": 38.9072,
+        "lon": -77.0369,
+    },
+    {
+        "name": "Sky News Politics",
+        "category": "politics",
+        "url": "https://feeds.skynews.com/feeds/rss/politics.xml",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "lat": 51.5072,
+        "lon": -0.1276,
+    },
+    {
         "name": "BBC Sport",
         "category": "sport",
         "url": "https://feeds.bbci.co.uk/sport/rss.xml?edition=uk",
@@ -240,6 +340,33 @@ SOURCES = [
         "name": "The Guardian Sport",
         "category": "sport",
         "url": "https://www.theguardian.com/sport/rss",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "lat": 51.5072,
+        "lon": -0.1276,
+    },
+    {
+        "name": "DW Sports",
+        "category": "sport",
+        "url": "https://rss.dw.com/rdf/rss-en-sports",
+        "region": "Europe",
+        "country": "Germany",
+        "lat": 52.5200,
+        "lon": 13.4050,
+    },
+    {
+        "name": "France 24 Sport",
+        "category": "sport",
+        "url": "https://www.france24.com/en/sport/rss",
+        "region": "Europe",
+        "country": "France",
+        "lat": 48.8566,
+        "lon": 2.3522,
+    },
+    {
+        "name": "Sky Sports News",
+        "category": "sport",
+        "url": "https://www.skysports.com/rss/12040",
         "region": "Europe",
         "country": "United Kingdom",
         "lat": 51.5072,
@@ -271,6 +398,60 @@ SOURCES = [
         "country": "United States",
         "lat": 38.9072,
         "lon": -77.0369,
+    },
+    {
+        "name": "The Register Security",
+        "category": "cyber",
+        "url": "https://api.theregister.com/api/v1/article?limit=25&orderBy=published&query=tag%3Asecurity&remapper=rss&site_id=2",
+        "region": "Europe",
+        "country": "United Kingdom",
+        "lat": 51.5072,
+        "lon": -0.1276,
+    },
+    {
+        "name": "CyberScoop",
+        "category": "cyber",
+        "url": "https://cyberscoop.com/feed/",
+        "region": "North America",
+        "country": "United States",
+        "lat": 38.9072,
+        "lon": -77.0369,
+    },
+    {
+        "name": "SecurityWeek",
+        "category": "cyber",
+        "url": "https://www.securityweek.com/feed/",
+        "region": "Global",
+        "country": "Global",
+        "lat": 20.0,
+        "lon": 0.0,
+    },
+    {
+        "name": "Dark Reading",
+        "category": "cyber",
+        "url": "https://www.darkreading.com/rss.xml",
+        "region": "Global",
+        "country": "Global",
+        "lat": 20.0,
+        "lon": 0.0,
+    },
+    {
+        "name": "CERT-EU",
+        "category": "cyber",
+        "url": "https://cert.europa.eu/publications/security-advisories-rss",
+        "region": "Europe",
+        "country": "Belgium",
+        "lat": 50.8503,
+        "lon": 4.3517,
+    },
+    {
+        "name": "Schneier on Security",
+        "category": "cyber",
+        "url": "https://www.schneier.com/feed/atom/",
+        "region": "North America",
+        "country": "United States",
+        "lat": 42.3601,
+        "lon": -71.0589,
     },
 ]
 
@@ -336,6 +517,7 @@ LOCATIONS = [
 MARKET_GROUPS = {
     "indices": "Indices",
     "etfs": "ETFs",
+    "bonds": "Country Bonds",
     "fx": "FX",
     "crypto": "Crypto",
     "commodities": "Commodities",
@@ -391,21 +573,67 @@ MARKET_INSTRUMENTS = [
         "yahoo": "GC=F",
         "strip": True,
     },
+    {"symbol": "^RUT", "displaySymbol": "RUT", "label": "Russell 2000", "assetClass": "indices", "yahoo": "^RUT"},
+    {"symbol": "^GDAXI", "displaySymbol": "DAX", "label": "DAX", "assetClass": "indices", "yahoo": "^GDAXI"},
+    {"symbol": "^FTSE", "displaySymbol": "FTSE", "label": "FTSE 100", "assetClass": "indices", "yahoo": "^FTSE"},
+    {"symbol": "^N225", "displaySymbol": "N225", "label": "Nikkei 225", "assetClass": "indices", "yahoo": "^N225"},
+    {"symbol": "^HSI", "displaySymbol": "HSI", "label": "Hang Seng", "assetClass": "indices", "yahoo": "^HSI"},
+    {"symbol": "^STOXX50E", "displaySymbol": "SX5E", "label": "Euro Stoxx 50", "assetClass": "indices", "yahoo": "^STOXX50E"},
+    {"symbol": "^VIX", "displaySymbol": "VIX", "label": "CBOE Volatility", "assetClass": "indices", "yahoo": "^VIX"},
     {"symbol": "SPY.US", "displaySymbol": "SPY", "label": "SPDR S&P 500 ETF", "assetClass": "etfs", "yahoo": "SPY"},
     {"symbol": "QQQ.US", "displaySymbol": "QQQ", "label": "Invesco QQQ", "assetClass": "etfs", "yahoo": "QQQ"},
+    {"symbol": "VT.US", "displaySymbol": "VT", "label": "Vanguard Total World", "assetClass": "etfs", "yahoo": "VT"},
+    {"symbol": "ACWI.US", "displaySymbol": "ACWI", "label": "iShares MSCI ACWI", "assetClass": "etfs", "yahoo": "ACWI"},
+    {"symbol": "URTH.US", "displaySymbol": "URTH", "label": "iShares MSCI World", "assetClass": "etfs", "yahoo": "URTH"},
     {"symbol": "VEA.US", "displaySymbol": "VEA", "label": "Vanguard Developed Markets", "assetClass": "etfs", "yahoo": "VEA"},
     {"symbol": "EEM.US", "displaySymbol": "EEM", "label": "iShares Emerging Markets", "assetClass": "etfs", "yahoo": "EEM"},
     {"symbol": "GLD.US", "displaySymbol": "GLD", "label": "SPDR Gold Shares", "assetClass": "etfs", "yahoo": "GLD"},
     {"symbol": "SLV.US", "displaySymbol": "SLV", "label": "iShares Silver Trust", "assetClass": "etfs", "yahoo": "SLV"},
+    {"symbol": "BND.US", "displaySymbol": "BND", "label": "Vanguard Total Bond", "assetClass": "etfs", "yahoo": "BND"},
+    {"symbol": "BNDX.US", "displaySymbol": "BNDX", "label": "Vanguard Total Intl Bond", "assetClass": "etfs", "yahoo": "BNDX"},
+    {"symbol": "GOVT.US", "displaySymbol": "GOVT", "label": "iShares U.S. Treasury Bond", "assetClass": "etfs", "yahoo": "GOVT"},
+    {"symbol": "IEF.US", "displaySymbol": "IEF", "label": "iShares 7-10Y Treasury", "assetClass": "etfs", "yahoo": "IEF"},
     {"symbol": "TLT.US", "displaySymbol": "TLT", "label": "iShares 20+ Year Treasury", "assetClass": "etfs", "yahoo": "TLT"},
+    {"symbol": "LQD.US", "displaySymbol": "LQD", "label": "iShares IG Corporate Bond", "assetClass": "etfs", "yahoo": "LQD"},
+    {"symbol": "HYG.US", "displaySymbol": "HYG", "label": "iShares High Yield Corp", "assetClass": "etfs", "yahoo": "HYG"},
+    {"symbol": "BWX.US", "displaySymbol": "BWX", "label": "SPDR Intl Treasury Bond", "assetClass": "etfs", "yahoo": "BWX"},
+    {"symbol": "EMB.US", "displaySymbol": "EMB", "label": "iShares EM USD Bond", "assetClass": "etfs", "yahoo": "EMB"},
+    {"symbol": "US02Y", "displaySymbol": "US 2Y", "label": "United States 2Y", "assetClass": "bonds", "tradingView": "TVC:US02Y"},
+    {"symbol": "US05Y", "displaySymbol": "US 5Y", "label": "United States 5Y", "assetClass": "bonds", "tradingView": "TVC:US05Y"},
+    {"symbol": "US10Y", "displaySymbol": "US 10Y", "label": "United States 10Y", "assetClass": "bonds", "tradingView": "TVC:US10Y"},
+    {"symbol": "US30Y", "displaySymbol": "US 30Y", "label": "United States 30Y", "assetClass": "bonds", "tradingView": "TVC:US30Y"},
+    {"symbol": "DE10Y", "displaySymbol": "DE 10Y", "label": "Germany 10Y", "assetClass": "bonds", "tradingView": "TVC:DE10Y"},
+    {"symbol": "GB10Y", "displaySymbol": "UK 10Y", "label": "United Kingdom 10Y", "assetClass": "bonds", "tradingView": "TVC:GB10Y"},
+    {"symbol": "JP10Y", "displaySymbol": "JP 10Y", "label": "Japan 10Y", "assetClass": "bonds", "tradingView": "TVC:JP10Y"},
+    {"symbol": "FR10Y", "displaySymbol": "FR 10Y", "label": "France 10Y", "assetClass": "bonds", "tradingView": "TVC:FR10Y"},
+    {"symbol": "IT10Y", "displaySymbol": "IT 10Y", "label": "Italy 10Y", "assetClass": "bonds", "tradingView": "TVC:IT10Y"},
+    {"symbol": "ES10Y", "displaySymbol": "ES 10Y", "label": "Spain 10Y", "assetClass": "bonds", "tradingView": "TVC:ES10Y"},
+    {"symbol": "PT10Y", "displaySymbol": "PT 10Y", "label": "Portugal 10Y", "assetClass": "bonds", "tradingView": "TVC:PT10Y"},
+    {"symbol": "CA10Y", "displaySymbol": "CA 10Y", "label": "Canada 10Y", "assetClass": "bonds", "tradingView": "TVC:CA10Y"},
+    {"symbol": "AU10Y", "displaySymbol": "AU 10Y", "label": "Australia 10Y", "assetClass": "bonds", "tradingView": "TVC:AU10Y"},
+    {"symbol": "BR10Y", "displaySymbol": "BR 10Y", "label": "Brazil 10Y", "assetClass": "bonds", "tradingView": "TVC:BR10Y"},
+    {"symbol": "IN10Y", "displaySymbol": "IN 10Y", "label": "India 10Y", "assetClass": "bonds", "tradingView": "TVC:IN10Y"},
+    {"symbol": "CN10Y", "displaySymbol": "CN 10Y", "label": "China 10Y", "assetClass": "bonds", "tradingView": "TVC:CN10Y"},
+    {"symbol": "EU10Y", "displaySymbol": "EU 10Y", "label": "Euro Area 10Y", "assetClass": "bonds", "tradingView": "TVC:EU10Y"},
     {"symbol": "CL.F", "displaySymbol": "CL", "label": "Crude Oil", "assetClass": "commodities", "yahoo": "CL=F"},
+    {"symbol": "BZ.F", "displaySymbol": "BZ", "label": "Brent Crude", "assetClass": "commodities", "yahoo": "BZ=F"},
     {"symbol": "NG.F", "displaySymbol": "NG", "label": "Natural Gas", "assetClass": "commodities", "yahoo": "NG=F"},
     {"symbol": "HG.F", "displaySymbol": "HG", "label": "Copper", "assetClass": "commodities", "yahoo": "HG=F", "stooqScale": 0.01},
+    {"symbol": "SI.F", "displaySymbol": "SI", "label": "Silver", "assetClass": "commodities", "yahoo": "SI=F"},
+    {"symbol": "PL.F", "displaySymbol": "PL", "label": "Platinum", "assetClass": "commodities", "yahoo": "PL=F"},
+    {"symbol": "ZC.F", "displaySymbol": "ZC", "label": "Corn", "assetClass": "commodities", "yahoo": "ZC=F"},
+    {"symbol": "ZW.F", "displaySymbol": "ZW", "label": "Wheat", "assetClass": "commodities", "yahoo": "ZW=F"},
     {"symbol": "GBPUSD", "displaySymbol": "GBP/USD", "label": "GBP/USD", "assetClass": "fx", "yahoo": "GBPUSD=X"},
     {"symbol": "USDJPY", "displaySymbol": "USD/JPY", "label": "USD/JPY", "assetClass": "fx", "yahoo": "USDJPY=X"},
     {"symbol": "USDBRL", "displaySymbol": "USD/BRL", "label": "USD/BRL", "assetClass": "fx", "yahoo": "USDBRL=X"},
+    {"symbol": "USDCHF", "displaySymbol": "USD/CHF", "label": "USD/CHF", "assetClass": "fx", "yahoo": "USDCHF=X"},
+    {"symbol": "AUDUSD", "displaySymbol": "AUD/USD", "label": "AUD/USD", "assetClass": "fx", "yahoo": "AUDUSD=X"},
+    {"symbol": "EURGBP", "displaySymbol": "EUR/GBP", "label": "EUR/GBP", "assetClass": "fx", "yahoo": "EURGBP=X"},
+    {"symbol": "USDCNY", "displaySymbol": "USD/CNY", "label": "USD/CNY", "assetClass": "fx", "yahoo": "CNY=X"},
     {"symbol": "ETHUSD", "displaySymbol": "ETH/USD", "label": "Ethereum", "assetClass": "crypto", "yahoo": "ETH-USD"},
     {"symbol": "BNBUSD", "displaySymbol": "BNB/USD", "label": "BNB", "assetClass": "crypto", "yahoo": "BNB-USD"},
+    {"symbol": "SOLUSD", "displaySymbol": "SOL/USD", "label": "Solana", "assetClass": "crypto", "yahoo": "SOL-USD"},
+    {"symbol": "XRPUSD", "displaySymbol": "XRP/USD", "label": "XRP", "assetClass": "crypto", "yahoo": "XRP-USD"},
 ]
 
 
@@ -719,9 +947,9 @@ def filter_news(payload, query):
     region = query.get("region", ["all"])[0]
     search = normalize_for_match(query.get("q", [""])[0])
     try:
-        limit = int(query.get("limit", ["300"])[0])
+        limit = int(query.get("limit", ["500"])[0])
     except ValueError:
-        limit = 300
+        limit = 500
 
     articles = payload["articles"]
     if category != "all":
@@ -879,6 +1107,38 @@ def fetch_yahoo_market_history(instrument):
     }
 
 
+def fetch_tradingview_bond_rows():
+    columns = ["name", "description", "close", "change", "change_abs", "open", "high", "low"]
+    tickers = [instrument["tradingView"] for instrument in MARKET_INSTRUMENTS if instrument.get("tradingView")]
+    if not tickers:
+        return {}
+
+    payload = {
+        "symbols": {"tickers": tickers, "query": {"types": []}},
+        "columns": columns,
+    }
+    request = Request(
+        "https://scanner.tradingview.com/bonds/scan",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json,text/plain,*/*",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    with urlopen(request, timeout=FEED_TIMEOUT_SECONDS) as response:
+        data = json.loads(response.read(300_000).decode("utf-8", errors="replace"))
+
+    rows = {}
+    for row in data.get("data", []):
+        values = dict(zip(columns, row.get("d") or []))
+        symbol = row.get("s")
+        if symbol:
+            rows[symbol.upper()] = values
+    return rows
+
+
 def build_session_history(item):
     open_price = item.get("open")
     high = item.get("high")
@@ -894,8 +1154,9 @@ def build_session_history(item):
     return [{"date": date, "close": value} for value in values]
 
 
-def build_market_item(instrument, stooq_row, yahoo_data):
+def build_market_item(instrument, stooq_row, yahoo_data, tradingview_data=None):
     scale = instrument.get("stooqScale", 1)
+    tradingview_data = tradingview_data or {}
 
     def scaled_row_value(field):
         value = parse_float(stooq_row.get(field) if stooq_row else None)
@@ -907,19 +1168,29 @@ def build_market_item(instrument, stooq_row, yahoo_data):
     low = scaled_row_value("Low")
     previous = scaled_row_value("Prev")
     volume = parse_int(stooq_row.get("Volume") if stooq_row else None)
+    tv_change_pct = parse_float(tradingview_data.get("change"))
+    tv_change_abs = parse_float(tradingview_data.get("change_abs"))
 
     close = close if close is not None else yahoo_data.get("regularMarketPrice")
     previous = previous if previous is not None else yahoo_data.get("previousClose")
     high = high if high is not None else yahoo_data.get("dayHigh")
     low = low if low is not None else yahoo_data.get("dayLow")
     volume = volume if volume is not None else yahoo_data.get("volume")
+    close = close if close is not None else parse_float(tradingview_data.get("close"))
+    open_price = open_price if open_price is not None else parse_float(tradingview_data.get("open"))
+    high = high if high is not None else parse_float(tradingview_data.get("high"))
+    low = low if low is not None else parse_float(tradingview_data.get("low"))
+    if previous is None and close is not None and tv_change_abs is not None:
+        previous = close - tv_change_abs
     if close is not None and high is not None:
         high = max(high, close)
     if close is not None and low is not None:
         low = min(low, close)
 
     change_pct = None
-    if close is not None and previous not in (None, 0):
+    if tv_change_pct is not None:
+        change_pct = tv_change_pct
+    elif close is not None and previous not in (None, 0):
         change_pct = ((close - previous) / previous) * 100
     elif close is not None and open_price not in (None, 0):
         change_pct = ((close - open_price) / open_price) * 100
@@ -930,7 +1201,7 @@ def build_market_item(instrument, stooq_row, yahoo_data):
         "label": instrument["label"],
         "assetClass": instrument["assetClass"],
         "assetClassLabel": MARKET_GROUPS.get(instrument["assetClass"], instrument["assetClass"].title()),
-        "currency": yahoo_data.get("currency"),
+        "currency": instrument.get("currency") or yahoo_data.get("currency"),
         "value": close,
         "open": open_price,
         "high": high,
@@ -941,7 +1212,7 @@ def build_market_item(instrument, stooq_row, yahoo_data):
         "volume": volume,
         "range52w": yahoo_data.get("range52w") or {"low": None, "high": None},
         "history": yahoo_data.get("history") or [],
-        "historySource": "yahoo" if yahoo_data.get("history") else "session",
+        "historySource": "yahoo" if yahoo_data.get("history") else "tradingview" if tradingview_data else "session",
         "date": stooq_row.get("Date") if stooq_row else None,
         "time": stooq_row.get("Time") if stooq_row else None,
         "strip": bool(instrument.get("strip")),
@@ -959,7 +1230,7 @@ def fetch_markets(force=False):
     status = {
         "ok": False,
         "error": "",
-        "sources": {"stooq": False, "yahoo": False},
+        "sources": {"stooq": False, "yahoo": False, "tradingView": False},
         "historyErrors": 0,
     }
     stooq_rows = {}
@@ -969,8 +1240,15 @@ def fetch_markets(force=False):
     except Exception as exc:  # noqa: BLE001 - markets should survive source outages.
         status["error"] = f"Stooq: {type(exc).__name__}"
 
+    tradingview_rows = {}
+    try:
+        tradingview_rows = fetch_tradingview_bond_rows()
+        status["sources"]["tradingView"] = bool(tradingview_rows)
+    except Exception as exc:  # noqa: BLE001 - bond yields should not break markets.
+        status["error"] = f"{status['error']}; TradingView: {type(exc).__name__}".strip("; ")
+
     yahoo_data = {}
-    with ThreadPoolExecutor(max_workers=8) as executor:
+    with ThreadPoolExecutor(max_workers=6) as executor:
         futures = {
             executor.submit(fetch_yahoo_market_history, instrument): instrument
             for instrument in MARKET_INSTRUMENTS
@@ -993,6 +1271,7 @@ def fetch_markets(force=False):
             instrument,
             stooq_rows.get(symbol_key),
             yahoo_data.get(symbol_key, {}),
+            tradingview_rows.get((instrument.get("tradingView") or "").upper()),
         )
         items.append(item)
 
@@ -1075,12 +1354,68 @@ class AppHandler(SimpleHTTPRequestHandler):
             self.path = "/markets.html"
         return super().do_GET()
 
+    def do_HEAD(self):
+        parsed = urlparse(self.path)
+        if parsed.path == "/":
+            self.path = "/index.html"
+        elif parsed.path in {"/markets", "/markets/"}:
+            self.path = "/markets.html"
+        return super().do_HEAD()
+
     def log_message(self, format, *args):  # noqa: A002 - stdlib method signature.
         print("[%s] %s" % (datetime.now().strftime("%H:%M:%S"), format % args))
 
 
 class AppServer(ThreadingHTTPServer):
     allow_reuse_address = True
+
+
+def local_network_url(port):
+    host = ""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+            probe.connect(("8.8.8.8", 80))
+            host = probe.getsockname()[0]
+    except OSError:
+        try:
+            host = socket.gethostbyname(socket.gethostname())
+        except OSError:
+            host = ""
+    if host and not host.startswith("127."):
+        return f"http://{host}:{port}"
+    return ""
+
+
+def public_service_url():
+    explicit_url = os.environ.get("PUBLIC_URL") or os.environ.get("RENDER_EXTERNAL_URL")
+    if explicit_url:
+        return explicit_url
+
+    fly_app_name = os.environ.get("FLY_APP_NAME")
+    if fly_app_name:
+        return f"https://{fly_app_name}.fly.dev"
+
+    railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN")
+    if railway_domain:
+        return f"https://{railway_domain}"
+
+    return ""
+
+
+def is_cloud_runtime():
+    cloud_markers = (
+        "FLY_APP_NAME",
+        "RAILWAY_ENVIRONMENT",
+        "RAILWAY_PUBLIC_DOMAIN",
+        "RENDER",
+        "RENDER_SERVICE_ID",
+        "RENDER_EXTERNAL_URL",
+    )
+    return any(os.environ.get(marker) for marker in cloud_markers)
+
+
+def is_container_runtime():
+    return os.path.exists("/.dockerenv")
 
 
 def main():
@@ -1094,6 +1429,16 @@ def main():
             return
         raise
     print(f"World Signal running at http://localhost:{PORT}")
+    public_url = public_service_url()
+    mobile_url = (
+        ""
+        if public_url or is_cloud_runtime() or is_container_runtime()
+        else local_network_url(PORT)
+    )
+    if public_url:
+        print(f"Public URL: {public_url}")
+    elif mobile_url:
+        print(f"Open on your phone at {mobile_url} while on the same Wi-Fi.")
     print("Press Ctrl+C to stop.")
     try:
         server.serve_forever()

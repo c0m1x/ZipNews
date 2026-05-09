@@ -205,17 +205,17 @@ function rowHTML(item) {
   const changeClass = item.changePct == null ? "" : item.changePct >= 0 ? "up" : "down";
   return `
     <tr>
-      <td>
+      <td data-label="Name">
         <strong>${escapeHTML(item.label)}</strong>
         <span>${escapeHTML(item.assetClassLabel || "")}</span>
       </td>
-      <td>${escapeHTML(item.displaySymbol || item.symbol)}</td>
-      <td>${formatMarketPrice(item.value, item)}</td>
-      <td class="${changeClass}">${formatPercent(item.changePct)}</td>
-      <td>${formatRange(item.low, item.high)}</td>
-      <td>${formatVolume(item.volume)}</td>
-      <td>${formatRange(item.range52w && item.range52w.low, item.range52w && item.range52w.high)}</td>
-      <td><canvas class="sparkline" data-symbol="${escapeAttr(item.symbol)}" width="140" height="42"></canvas></td>
+      <td data-label="Ticker">${escapeHTML(item.displaySymbol || item.symbol)}</td>
+      <td data-label="Last">${formatMarketPrice(item.value, item)}</td>
+      <td data-label="Change" class="${changeClass}">${formatPercent(item.changePct)}</td>
+      <td data-label="Day Range">${formatRange(item.low, item.high, item)}</td>
+      <td data-label="Volume">${formatVolume(item.volume)}</td>
+      <td data-label="52W Range">${formatRange(item.range52w && item.range52w.low, item.range52w && item.range52w.high, item)}</td>
+      <td data-label="Trend"><canvas class="sparkline" data-symbol="${escapeAttr(item.symbol)}" width="140" height="42"></canvas></td>
     </tr>`;
 }
 
@@ -302,6 +302,9 @@ function sourceText(status) {
   if (status.sources && status.sources.yahoo) {
     sources.push("Yahoo history");
   }
+  if (status.sources && status.sources.tradingView) {
+    sources.push("TradingView bond yields");
+  }
   if (!sources.length) {
     return "Market sources unavailable.";
   }
@@ -312,6 +315,9 @@ function sourceText(status) {
 function formatMarketPrice(value, item) {
   if (typeof value !== "number") {
     return "N/A";
+  }
+  if (item.assetClass === "bonds") {
+    return `${value.toFixed(3)}%`;
   }
   const symbol = item.displaySymbol || item.symbol || "";
   if (symbol.includes("/") && value < 10) {
@@ -333,9 +339,12 @@ function formatPercent(value) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
-function formatRange(low, high) {
+function formatRange(low, high, item = {}) {
   if (typeof low !== "number" || typeof high !== "number") {
     return "N/A";
+  }
+  if (item.assetClass === "bonds") {
+    return `${low.toFixed(3)}% / ${high.toFixed(3)}%`;
   }
   return `${formatCompactNumber(low)} / ${formatCompactNumber(high)}`;
 }

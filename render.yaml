@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: world-signal
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NEWS_CACHE_SECONDS
+        value: "600"
+      - key: MARKET_CACHE_SECONDS
+        value: "120"
+      - key: FEED_TIMEOUT_SECONDS
+        value: "8"
+      - key: MAX_ITEMS_PER_SOURCE
+        value: "16"
