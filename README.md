@@ -19,14 +19,17 @@ Open `http://localhost:8000`.
 - Refreshes automatically every 10 minutes when the Auto toggle is on.
 - Includes a source health panel so failed or slow feeds are visible.
 - Adds a Stooq-based market strip for major indexes, EUR/USD, Bitcoin, and gold.
+- Adds a full markets dashboard at `/markets` with sortable asset groups, OHLC data, volume, 52-week ranges, sparklines, and independent refresh.
 - Produces an Atlas briefing and can read it aloud using the browser Speech Synthesis API.
 
 ## Architecture
 
 - `app.py`: Python standard-library HTTP server, RSS aggregation, caching, summarization, geolocation, market data, JSON API.
 - `static/index.html`: dashboard shell.
+- `static/markets.html`: full-screen markets page shell.
 - `static/styles.css`: responsive map-first interface.
 - `static/app.js`: Leaflet map, filters, markers, feed rendering, briefing narration.
+- `static/markets.js`: sortable markets table, collapsible groups, sparklines, and page refresh loop.
 
 ## API
 
@@ -34,7 +37,7 @@ Open `http://localhost:8000`.
 - `GET /api/news?category=economy&region=Europe&q=ECB`: filtered stories.
 - `GET /api/news?refresh=1`: force feed refresh.
 - `GET /api/briefing`: generated briefing.
-- `GET /api/markets`: market snapshot.
+- `GET /api/markets`: expanded market snapshot with OHLC, volume, 52-week range, and chart history.
 - `GET /api/health`: server status.
 
 ## Next Upgrades

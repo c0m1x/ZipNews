@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>World Signal Markets</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="markets-page">
+    <div id="marketsApp" class="markets-app">
+      <header class="markets-topbar">
+        <a class="brand brand-link" href="/" aria-label="World Signal home">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <h1>World Signal</h1>
+            <p id="marketsStatus">Loading markets</p>
+          </div>
+        </a>
+        <div class="markets-actions">
+          <a class="ghost-button nav-link" href="/">News Map</a>
+          <button id="marketsRefreshButton" class="icon-button" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <main class="markets-main" aria-label="Markets dashboard">
+        <section class="markets-overview" aria-label="Market overview">
+          <div class="market-stat">
+            <span>Instruments</span>
+            <strong id="marketsCount">0</strong>
+          </div>
+          <div class="market-stat">
+            <span>Advancers</span>
+            <strong id="marketsUp">0</strong>
+          </div>
+          <div class="market-stat">
+            <span>Decliners</span>
+            <strong id="marketsDown">0</strong>
+          </div>
+          <div class="market-stat">
+            <span>Refresh</span>
+            <strong id="marketsCountdown">60s</strong>
+          </div>
+          <label class="market-search">
+            <span>Search</span>
+            <input id="marketsSearch" type="search" placeholder="SPY, oil, EUR..." />
+          </label>
+        </section>
+
+        <section id="marketsTable" class="markets-table" aria-live="polite"></section>
+      </main>
+
+      <footer class="markets-footer">
+        <span id="marketsSource">Stooq quotes with Yahoo chart history.</span>
+      </footer>
+    </div>
+
+    <script src="/markets.js"></script>
+  </body>
+</html>

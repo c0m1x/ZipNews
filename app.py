@@ -7,11 +7,11 @@ Run with:
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 from urllib.request import Request, urlopen
 
 import csv
@@ -333,13 +333,79 @@ LOCATIONS = [
 ]
 
 
-MARKET_SYMBOLS = [
-    ("^SPX", "S&P 500"),
-    ("^NDQ", "Nasdaq"),
-    ("^DJI", "Dow"),
-    ("EURUSD", "EUR/USD"),
-    ("BTCUSD", "Bitcoin"),
-    ("XAUUSD", "Gold"),
+MARKET_GROUPS = {
+    "indices": "Indices",
+    "etfs": "ETFs",
+    "fx": "FX",
+    "crypto": "Crypto",
+    "commodities": "Commodities",
+}
+
+
+MARKET_INSTRUMENTS = [
+    {
+        "symbol": "^SPX",
+        "displaySymbol": "SPX",
+        "label": "S&P 500",
+        "assetClass": "indices",
+        "yahoo": "^GSPC",
+        "strip": True,
+    },
+    {
+        "symbol": "^NDQ",
+        "displaySymbol": "NDQ",
+        "label": "Nasdaq",
+        "assetClass": "indices",
+        "yahoo": "^IXIC",
+        "strip": True,
+    },
+    {
+        "symbol": "^DJI",
+        "displaySymbol": "DJI",
+        "label": "Dow",
+        "assetClass": "indices",
+        "yahoo": "^DJI",
+        "strip": True,
+    },
+    {
+        "symbol": "EURUSD",
+        "displaySymbol": "EUR/USD",
+        "label": "EUR/USD",
+        "assetClass": "fx",
+        "yahoo": "EURUSD=X",
+        "strip": True,
+    },
+    {
+        "symbol": "BTCUSD",
+        "displaySymbol": "BTC/USD",
+        "label": "Bitcoin",
+        "assetClass": "crypto",
+        "yahoo": "BTC-USD",
+        "strip": True,
+    },
+    {
+        "symbol": "XAUUSD",
+        "displaySymbol": "XAU/USD",
+        "label": "Gold",
+        "assetClass": "commodities",
+        "yahoo": "GC=F",
+        "strip": True,
+    },
+    {"symbol": "SPY.US", "displaySymbol": "SPY", "label": "SPDR S&P 500 ETF", "assetClass": "etfs", "yahoo": "SPY"},
+    {"symbol": "QQQ.US", "displaySymbol": "QQQ", "label": "Invesco QQQ", "assetClass": "etfs", "yahoo": "QQQ"},
+    {"symbol": "VEA.US", "displaySymbol": "VEA", "label": "Vanguard Developed Markets", "assetClass": "etfs", "yahoo": "VEA"},
+    {"symbol": "EEM.US", "displaySymbol": "EEM", "label": "iShares Emerging Markets", "assetClass": "etfs", "yahoo": "EEM"},
+    {"symbol": "GLD.US", "displaySymbol": "GLD", "label": "SPDR Gold Shares", "assetClass": "etfs", "yahoo": "GLD"},
+    {"symbol": "SLV.US", "displaySymbol": "SLV", "label": "iShares Silver Trust", "assetClass": "etfs", "yahoo": "SLV"},
+    {"symbol": "TLT.US", "displaySymbol": "TLT", "label": "iShares 20+ Year Treasury", "assetClass": "etfs", "yahoo": "TLT"},
+    {"symbol": "CL.F", "displaySymbol": "CL", "label": "Crude Oil", "assetClass": "commodities", "yahoo": "CL=F"},
+    {"symbol": "NG.F", "displaySymbol": "NG", "label": "Natural Gas", "assetClass": "commodities", "yahoo": "NG=F"},
+    {"symbol": "HG.F", "displaySymbol": "HG", "label": "Copper", "assetClass": "commodities", "yahoo": "HG=F", "stooqScale": 0.01},
+    {"symbol": "GBPUSD", "displaySymbol": "GBP/USD", "label": "GBP/USD", "assetClass": "fx", "yahoo": "GBPUSD=X"},
+    {"symbol": "USDJPY", "displaySymbol": "USD/JPY", "label": "USD/JPY", "assetClass": "fx", "yahoo": "USDJPY=X"},
+    {"symbol": "USDBRL", "displaySymbol": "USD/BRL", "label": "USD/BRL", "assetClass": "fx", "yahoo": "USDBRL=X"},
+    {"symbol": "ETHUSD", "displaySymbol": "ETH/USD", "label": "Ethereum", "assetClass": "crypto", "yahoo": "ETH-USD"},
+    {"symbol": "BNBUSD", "displaySymbol": "BNB/USD", "label": "BNB", "assetClass": "crypto", "yahoo": "BNB-USD"},
 ]
 
 
@@ -728,45 +794,216 @@ def build_briefing(force=False):
     }
 
 
+def fetch_stooq_market_rows():
+    symbols = "+".join(instrument["symbol"] for instrument in MARKET_INSTRUMENTS)
+    url = f"https://stooq.com/q/l/?s={symbols}&f=sd2t2ohlcvpn&h&e=csv"
+    request = Request(url, headers={"User-Agent": USER_AGENT})
+    with urlopen(request, timeout=FEED_TIMEOUT_SECONDS) as response:
+        raw = response.read(500_000).decode("utf-8", errors="replace")
+    rows = list(csv.DictReader(io.StringIO(raw)))
+    return {row.get("Symbol", "").upper(): row for row in rows if row.get("Symbol")}
+
+
+def fetch_yahoo_market_history(instrument):
+    yahoo_symbol = instrument.get("yahoo")
+    if not yahoo_symbol:
+        return {}
+    encoded = quote(yahoo_symbol, safe="")
+    url = (
+        "https://query1.finance.yahoo.com/v8/finance/chart/"
+        f"{encoded}?range=1y&interval=1d"
+    )
+    request = Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json,text/plain,*/*",
+        },
+    )
+    with urlopen(request, timeout=FEED_TIMEOUT_SECONDS) as response:
+        data = json.loads(response.read(1_500_000).decode("utf-8", errors="replace"))
+
+    result = ((data.get("chart") or {}).get("result") or [{}])[0]
+    meta = result.get("meta") or {}
+    quote_block = ((result.get("indicators") or {}).get("quote") or [{}])[0]
+    timestamps = result.get("timestamp") or []
+    closes = quote_block.get("close") or []
+    highs = quote_block.get("high") or []
+    lows = quote_block.get("low") or []
+    volumes = quote_block.get("volume") or []
+
+    history = []
+    high_values = []
+    low_values = []
+    for index, timestamp in enumerate(timestamps):
+        close = parse_float(closes[index] if index < len(closes) else None)
+        if close is None:
+            continue
+        high = parse_float(highs[index] if index < len(highs) else None)
+        low = parse_float(lows[index] if index < len(lows) else None)
+        volume = parse_int(volumes[index] if index < len(volumes) else None)
+        if high is not None:
+            high_values.append(high)
+        if low is not None:
+            low_values.append(low)
+        history.append(
+            {
+                "date": datetime.fromtimestamp(timestamp, timezone.utc).date().isoformat(),
+                "close": close,
+                "high": high,
+                "low": low,
+                "volume": volume,
+            }
+        )
+
+    range_low = parse_float(meta.get("fiftyTwoWeekLow"))
+    range_high = parse_float(meta.get("fiftyTwoWeekHigh"))
+    if range_low is None and low_values:
+        range_low = min(low_values)
+    if range_high is None and high_values:
+        range_high = max(high_values)
+
+    previous_close = parse_float(meta.get("previousClose") or meta.get("chartPreviousClose"))
+    if previous_close is None and len(history) >= 2:
+        previous_close = history[-2]["close"]
+
+    return {
+        "currency": meta.get("currency"),
+        "regularMarketPrice": parse_float(meta.get("regularMarketPrice")),
+        "previousClose": previous_close,
+        "dayHigh": parse_float(meta.get("regularMarketDayHigh")),
+        "dayLow": parse_float(meta.get("regularMarketDayLow")),
+        "volume": parse_int(meta.get("regularMarketVolume")),
+        "range52w": {"low": range_low, "high": range_high},
+        "history": history[-64:],
+    }
+
+
+def build_session_history(item):
+    open_price = item.get("open")
+    high = item.get("high")
+    low = item.get("low")
+    close = item.get("close")
+    if not all(value is not None for value in (open_price, high, low, close)):
+        return []
+    date = item.get("date") or utc_now().date().isoformat()
+    if close >= open_price:
+        values = [open_price, low, high, close]
+    else:
+        values = [open_price, high, low, close]
+    return [{"date": date, "close": value} for value in values]
+
+
+def build_market_item(instrument, stooq_row, yahoo_data):
+    scale = instrument.get("stooqScale", 1)
+
+    def scaled_row_value(field):
+        value = parse_float(stooq_row.get(field) if stooq_row else None)
+        return value * scale if value is not None else None
+
+    close = scaled_row_value("Close")
+    open_price = scaled_row_value("Open")
+    high = scaled_row_value("High")
+    low = scaled_row_value("Low")
+    previous = scaled_row_value("Prev")
+    volume = parse_int(stooq_row.get("Volume") if stooq_row else None)
+
+    close = close if close is not None else yahoo_data.get("regularMarketPrice")
+    previous = previous if previous is not None else yahoo_data.get("previousClose")
+    high = high if high is not None else yahoo_data.get("dayHigh")
+    low = low if low is not None else yahoo_data.get("dayLow")
+    volume = volume if volume is not None else yahoo_data.get("volume")
+    if close is not None and high is not None:
+        high = max(high, close)
+    if close is not None and low is not None:
+        low = min(low, close)
+
+    change_pct = None
+    if close is not None and previous not in (None, 0):
+        change_pct = ((close - previous) / previous) * 100
+    elif close is not None and open_price not in (None, 0):
+        change_pct = ((close - open_price) / open_price) * 100
+
+    item = {
+        "symbol": instrument["symbol"],
+        "displaySymbol": instrument.get("displaySymbol", instrument["symbol"]),
+        "label": instrument["label"],
+        "assetClass": instrument["assetClass"],
+        "assetClassLabel": MARKET_GROUPS.get(instrument["assetClass"], instrument["assetClass"].title()),
+        "currency": yahoo_data.get("currency"),
+        "value": close,
+        "open": open_price,
+        "high": high,
+        "low": low,
+        "close": close,
+        "previousClose": previous,
+        "changePct": change_pct,
+        "volume": volume,
+        "range52w": yahoo_data.get("range52w") or {"low": None, "high": None},
+        "history": yahoo_data.get("history") or [],
+        "historySource": "yahoo" if yahoo_data.get("history") else "session",
+        "date": stooq_row.get("Date") if stooq_row else None,
+        "time": stooq_row.get("Time") if stooq_row else None,
+        "strip": bool(instrument.get("strip")),
+    }
+    if not item["history"]:
+        item["history"] = build_session_history(item)
+    return item
+
+
 def fetch_markets(force=False):
     cached = _cache["markets"]
     if not force and cached["payload"] and cached["expires"] > time.time():
         return cached["payload"]
 
-    symbols = "+".join(symbol for symbol, _ in MARKET_SYMBOLS)
-    url = f"https://stooq.com/q/l/?s={symbols}&f=sd2t2ohlcv&h&e=csv"
-    items = []
-    status = {"ok": False, "error": ""}
+    status = {
+        "ok": False,
+        "error": "",
+        "sources": {"stooq": False, "yahoo": False},
+        "historyErrors": 0,
+    }
+    stooq_rows = {}
     try:
-        request = Request(url, headers={"User-Agent": USER_AGENT})
-        with urlopen(request, timeout=FEED_TIMEOUT_SECONDS) as response:
-            raw = response.read(200_000).decode("utf-8", errors="replace")
-        rows = list(csv.DictReader(io.StringIO(raw)))
-        labels = {symbol: label for symbol, label in MARKET_SYMBOLS}
-        for row in rows:
-            symbol = row.get("Symbol", "")
-            if symbol not in labels:
-                continue
-            close = parse_float(row.get("Close"))
-            open_price = parse_float(row.get("Open"))
-            change_pct = None
-            if close is not None and open_price not in (None, 0):
-                change_pct = ((close - open_price) / open_price) * 100
-            items.append(
-                {
-                    "symbol": symbol,
-                    "label": labels[symbol],
-                    "value": close,
-                    "changePct": change_pct,
-                    "date": row.get("Date"),
-                    "time": row.get("Time"),
-                }
-            )
-        status["ok"] = True
-    except Exception as exc:  # noqa: BLE001 - market snapshot is optional.
-        status["error"] = type(exc).__name__
+        stooq_rows = fetch_stooq_market_rows()
+        status["sources"]["stooq"] = True
+    except Exception as exc:  # noqa: BLE001 - markets should survive source outages.
+        status["error"] = f"Stooq: {type(exc).__name__}"
 
-    payload = {"generatedAt": iso_now(), "items": items, "status": status}
+    yahoo_data = {}
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {
+            executor.submit(fetch_yahoo_market_history, instrument): instrument
+            for instrument in MARKET_INSTRUMENTS
+        }
+        for future in as_completed(futures):
+            instrument = futures[future]
+            try:
+                result = future.result()
+                yahoo_data[instrument["symbol"].upper()] = result
+                if result.get("history"):
+                    status["sources"]["yahoo"] = True
+            except Exception:  # noqa: BLE001 - one chart should not break the page.
+                yahoo_data[instrument["symbol"].upper()] = {}
+                status["historyErrors"] += 1
+
+    items = []
+    for instrument in MARKET_INSTRUMENTS:
+        symbol_key = instrument["symbol"].upper()
+        item = build_market_item(
+            instrument,
+            stooq_rows.get(symbol_key),
+            yahoo_data.get(symbol_key, {}),
+        )
+        items.append(item)
+
+    status["ok"] = any(item["value"] is not None for item in items)
+    payload = {
+        "generatedAt": iso_now(),
+        "cacheSeconds": MARKET_CACHE_SECONDS,
+        "items": items,
+        "groups": MARKET_GROUPS,
+        "status": status,
+    }
     cached["payload"] = payload
     cached["expires"] = time.time() + MARKET_CACHE_SECONDS
     return payload
@@ -777,8 +1014,15 @@ def parse_float(value):
         if value in (None, "", "N/D"):
             return None
         return float(value)
-    except ValueError:
+    except (TypeError, ValueError):
         return None
+
+
+def parse_int(value):
+    parsed = parse_float(value)
+    if parsed is None:
+        return None
+    return int(parsed)
 
 
 def respond_json(handler, payload, status=200):
@@ -827,6 +1071,8 @@ class AppHandler(SimpleHTTPRequestHandler):
 
         if parsed.path == "/":
             self.path = "/index.html"
+        elif parsed.path in {"/markets", "/markets/"}:
+            self.path = "/markets.html"
         return super().do_GET()
 
     def log_message(self, format, *args):  # noqa: A002 - stdlib method signature.

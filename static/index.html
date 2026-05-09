@@ -7,7 +7,7 @@
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIINfQHKZbbpRYG4aQdBnhE5tK8E2M7G2+M="
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
       crossorigin=""
     />
     <link rel="stylesheet" href="/styles.css" />
@@ -97,9 +97,21 @@
             <span class="eyebrow">Atlas</span>
             <h2>Briefing</h2>
           </div>
-          <button id="narrateButton" class="icon-button" type="button" title="Narrate">Narrate</button>
+          <button
+            id="briefingButton"
+            class="icon-button briefing-button"
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="briefingDialog"
+            aria-expanded="false"
+          >
+            Open briefing
+          </button>
         </div>
-        <div id="briefingLines" class="briefing-lines"></div>
+        <div class="briefing-preview" aria-live="polite">
+          <span>Atlas briefing</span>
+          <strong id="briefingSummary">Building briefing.</strong>
+        </div>
 
         <div id="activeStory" class="active-story"></div>
 
@@ -109,6 +121,27 @@
         </div>
         <div id="storyFeed" class="story-feed"></div>
       </aside>
+
+      <div id="briefingOverlay" class="briefing-overlay" hidden>
+        <section
+          id="briefingDialog"
+          class="briefing-card"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="briefingDialogTitle"
+        >
+          <div class="briefing-card-header">
+            <div>
+              <span class="eyebrow">Atlas</span>
+              <h2 id="briefingDialogTitle">Briefing</h2>
+            </div>
+            <button id="closeBriefingButton" class="ghost-button" type="button">Close</button>
+          </div>
+          <div id="briefingLines" class="briefing-lines">
+            <p>Building briefing.</p>
+          </div>
+        </section>
+      </div>
     </div>
 
     <script

@@ -6,11 +6,12 @@ const state = {
   payload: null,
   articles: [],
   briefing: null,
-  activeCategory: "all",
+  activeCategories: new Set(),
   activeRegion: "all",
   search: "",
   activeId: null,
-  speaking: false,
+  previousFocus: null,
+  refreshId: 0,
   lastFilterKey: "",
   autoRefreshTimer: null,
 };
@@ -25,6 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function cacheElements() {
+  els.map = document.querySelector("#map");
   els.statusLine = document.querySelector("#statusLine");
   els.marketStrip = document.querySelector("#marketStrip");
   els.refreshButton = document.querySelector("#refreshButton");
@@ -40,45 +42,70 @@ function cacheElements() {
   els.regionMetric = document.querySelector("#regionMetric");
   els.countryMetric = document.querySelector("#countryMetric");
   els.sourceList = document.querySelector("#sourceList");
+  els.briefingButton = document.querySelector("#briefingButton");
+  els.briefingSummary = document.querySelector("#briefingSummary");
+  els.briefingOverlay = document.querySelector("#briefingOverlay");
   els.briefingLines = document.querySelector("#briefingLines");
-  els.narrateButton = document.querySelector("#narrateButton");
+  els.closeBriefingButton = document.querySelector("#closeBriefingButton");
   els.activeStory = document.querySelector("#activeStory");
   els.feedCount = document.querySelector("#feedCount");
   els.storyFeed = document.querySelector("#storyFeed");
 }
 
 function initMap() {
-  state.map = L.map("map", {
-    zoomControl: false,
-    preferCanvas: true,
-    worldCopyJump: false,
-    zoomSnap: 0.25,
-    zoomDelta: 0.5,
-    wheelPxPerZoomLevel: 90,
-    minZoom: 1.5,
-    maxZoom: 12,
-    dragging: true,
-    scrollWheelZoom: true,
-    touchZoom: true,
-    doubleClickZoom: true,
-    keyboard: true,
-  }).setView([20, 0], 2.15);
+  if (typeof L === "undefined") {
+    setMapFallback("Map unavailable");
+    return;
+  }
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    subdomains: "abcd",
-    maxZoom: 19,
-    detectRetina: true,
-    keepBuffer: 5,
-    updateWhenIdle: false,
-    updateWhenZooming: false,
-    crossOrigin: true,
-  }).addTo(state.map);
+  try {
+    state.map = L.map("map", {
+      zoomControl: false,
+      preferCanvas: true,
+      worldCopyJump: false,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      wheelPxPerZoomLevel: 90,
+      minZoom: 1.5,
+      maxZoom: 12,
+      dragging: true,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      doubleClickZoom: true,
+      keyboard: true,
+    }).setView([20, 0], 2.15);
 
-  L.control.zoom({ position: "bottomleft" }).addTo(state.map);
-  state.canvasRenderer = L.canvas({ padding: 0.5 });
-  state.markerLayer = L.layerGroup().addTo(state.map);
-  setTimeout(() => state.map.invalidateSize(), 0);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      subdomains: "abcd",
+      maxZoom: 19,
+      detectRetina: true,
+      keepBuffer: 5,
+      updateWhenIdle: false,
+      updateWhenZooming: false,
+      crossOrigin: true,
+    }).addTo(state.map);
+
+    L.control.zoom({ position: "bottomleft" }).addTo(state.map);
+    state.canvasRenderer = L.canvas({ padding: 0.5 });
+    state.markerLayer = L.layerGroup().addTo(state.map);
+    setTimeout(() => state.map.invalidateSize(), 0);
+  } catch (error) {
+    console.error("Map failed to initialize", error);
+    state.map = null;
+    state.markerLayer = null;
+    state.canvasRenderer = null;
+    setMapFallback("Map unavailable");
+  }
+}
+
+function setMapFallback(message) {
+  if (!els.map) {
+    return;
+  }
+  els.map.classList.add("map-fallback");
+  els.map.textContent = message;
+  els.map.setAttribute("aria-label", message);
 }
 
 function bindEvents() {
@@ -97,36 +124,90 @@ function bindEvents() {
     state.search = els.searchInput.value.trim().toLowerCase();
     render();
   }, 160));
-  els.narrateButton.addEventListener("click", toggleNarration);
+  els.briefingButton.addEventListener("click", openBriefing);
+  els.closeBriefingButton.addEventListener("click", closeBriefing);
+  els.briefingOverlay.addEventListener("click", (event) => {
+    if (event.target === els.briefingOverlay) {
+      closeBriefing();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !els.briefingOverlay.hidden) {
+      closeBriefing();
+    }
+  });
   configureAutoRefresh();
 }
 
 async function refreshAll(force = false) {
   setLoading(true);
+  const refreshId = ++state.refreshId;
+  const suffix = force ? "?refresh=1" : "";
+  state.briefing = null;
+  renderBriefing();
+  loadBriefing(suffix, refreshId);
+  loadMarkets(suffix, refreshId);
+
   try {
-    const suffix = force ? "?refresh=1" : "";
-    const [news, briefing, markets] = await Promise.all([
-      fetchJSON(`/api/news${suffix}`),
-      fetchJSON(`/api/briefing${suffix}`),
-      fetchJSON(`/api/markets${suffix}`),
-    ]);
+    const news = await fetchJSON(`/api/news${suffix}`);
+    if (refreshId !== state.refreshId) {
+      return;
+    }
     state.payload = news;
     state.articles = news.articles || [];
-    state.briefing = briefing;
     if (!state.activeId && state.articles.length) {
       state.activeId = state.articles[0].id;
     }
     renderCategories();
     renderRegions();
-    renderMarkets(markets);
     render();
     els.statusLine.textContent = statusText(news);
   } catch (error) {
-    els.statusLine.textContent = "Feed refresh failed";
-    els.briefingLines.innerHTML = `<p>${escapeHTML(error.message || "Unable to load feeds.")}</p>`;
+    if (refreshId === state.refreshId) {
+      state.briefing = { lines: [error.message || "Unable to load feeds."], script: "" };
+      renderBriefing();
+      els.statusLine.textContent = "Feed refresh failed";
+    }
   } finally {
-    setLoading(false);
+    if (refreshId === state.refreshId) {
+      setLoading(false);
+    }
   }
+}
+
+function loadBriefing(suffix, refreshId) {
+  fetchJSON(`/api/briefing${suffix}`)
+    .then((briefing) => {
+      if (refreshId !== state.refreshId) {
+        return;
+      }
+      state.briefing = briefing;
+      renderBriefing();
+    })
+    .catch((error) => {
+      if (refreshId !== state.refreshId) {
+        return;
+      }
+      state.briefing = { lines: [error.message || "Unable to load briefing."], script: "" };
+      renderBriefing();
+    });
+}
+
+function loadMarkets(suffix, refreshId) {
+  fetchJSON(`/api/markets${suffix}`)
+    .then((markets) => {
+      if (refreshId !== state.refreshId) {
+        return;
+      }
+      renderMarkets(markets);
+    })
+    .catch((error) => {
+      if (refreshId !== state.refreshId) {
+        return;
+      }
+      console.warn("Markets unavailable", error);
+      renderMarkets(null);
+    });
 }
 
 function configureAutoRefresh() {
@@ -149,10 +230,17 @@ function focusMapView(view) {
   els.mapViewButtons.forEach((button) => {
     button.classList.toggle("is-active", button.dataset.mapView === view);
   });
+  if (!state.map) {
+    return;
+  }
   state.map.flyTo(target.center, target.zoom, { duration: 0.65 });
 }
 
 function fitVisibleStories() {
+  if (!state.map) {
+    focusMapView("world");
+    return;
+  }
   const bounds = filteredArticles()
     .filter((article) => Number.isFinite(article.lat) && Number.isFinite(article.lon))
     .map((article) => [article.lat, article.lon]);
@@ -165,7 +253,7 @@ function fitVisibleStories() {
 }
 
 function clearFilters() {
-  state.activeCategory = "all";
+  state.activeCategories.clear();
   state.activeRegion = "all";
   state.search = "";
   state.activeId = state.articles.length ? state.articles[0].id : null;
@@ -193,11 +281,12 @@ function setLoading(isLoading) {
 
 function render() {
   const filtered = filteredArticles();
-  const filterKey = `${state.activeCategory}|${state.activeRegion}|${state.search}`;
+  syncActiveArticle(filtered);
+  const filterKey = `${activeCategoryKey()}|${state.activeRegion}|${state.search}`;
   renderMetrics(filtered);
   renderMap(filtered, filterKey);
   renderBriefing();
-  renderActiveStory();
+  renderActiveStory(filtered);
   renderFeed(filtered);
 }
 
@@ -215,23 +304,47 @@ function renderCategories() {
   ];
 
   els.categoryFilters.innerHTML = buttons
-    .map(
-      (item) => `
-        <button class="segment-button ${state.activeCategory === item.key ? "is-active" : ""}"
-          type="button" data-category="${item.key}" title="${escapeHTML(item.label)}">
+    .map((item) => {
+      const active = isCategoryActive(item.key);
+      return `
+        <button class="segment-button ${active ? "is-active" : ""}"
+          type="button" data-category="${item.key}" title="${escapeHTML(item.label)}"
+          aria-pressed="${active ? "true" : "false"}">
           <span><span class="dot" style="background:${item.color}"></span> ${escapeHTML(item.label)}</span>
           <strong>${item.count}</strong>
-        </button>`
-    )
+        </button>`;
+    })
     .join("");
 
   els.categoryFilters.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
-      state.activeCategory = button.dataset.category;
-      renderCategories();
-      render();
+      toggleCategory(button.dataset.category);
     });
   });
+}
+
+function isCategoryActive(category) {
+  return category === "all" ? state.activeCategories.size === 0 : state.activeCategories.has(category);
+}
+
+function toggleCategory(category) {
+  if (category === "all") {
+    state.activeCategories.clear();
+  } else if (state.activeCategories.has(category)) {
+    state.activeCategories.delete(category);
+  } else {
+    state.activeCategories.add(category);
+  }
+  state.lastFilterKey = "";
+  renderCategories();
+  render();
+}
+
+function activeCategoryKey() {
+  if (!state.activeCategories.size) {
+    return "all";
+  }
+  return [...state.activeCategories].sort().join(",");
 }
 
 function renderRegions() {
@@ -249,11 +362,18 @@ function renderRegions() {
 
 function renderMarkets(markets) {
   const items = (markets && markets.items) || [];
+  const linkTile = `
+    <a class="market-tile market-link" href="/markets">
+      <span>Markets</span>
+      <strong>View all</strong>
+      <small>Full board</small>
+    </a>`;
   if (!items.length) {
-    els.marketStrip.innerHTML = `<div class="market-tile"><span>Markets</span><strong>Unavailable</strong><small>Snapshot</small></div>`;
+    els.marketStrip.innerHTML = `<div class="market-tile"><span>Markets</span><strong>Unavailable</strong><small>Snapshot</small></div>${linkTile}`;
     return;
   }
-  els.marketStrip.innerHTML = items
+  const stripItems = items.filter((item) => item.strip).slice(0, 6);
+  els.marketStrip.innerHTML = stripItems
     .slice(0, 6)
     .map((item) => {
       const value = formatMarketValue(item);
@@ -267,7 +387,7 @@ function renderMarkets(markets) {
           <small class="${className}">${changeText}</small>
         </div>`;
     })
-    .join("");
+    .join("") + linkTile;
 }
 
 function renderMetrics(articles) {
@@ -294,6 +414,11 @@ function renderSources() {
 }
 
 function renderMap(articles, filterKey) {
+  if (!state.map || !state.markerLayer) {
+    state.lastFilterKey = filterKey;
+    return;
+  }
+
   state.markerLayer.clearLayers();
   state.markers.clear();
 
@@ -334,13 +459,33 @@ function renderMap(articles, filterKey) {
 
 function renderBriefing() {
   const lines = (state.briefing && state.briefing.lines) || [];
-  els.briefingLines.innerHTML = lines.length
-    ? lines.map((line) => `<p>${escapeHTML(line)}</p>`).join("")
-    : "<p>Building briefing.</p>";
+  const displayLines = lines.length ? lines : ["Building briefing."];
+  els.briefingSummary.textContent = displayLines[0];
+  els.briefingLines.innerHTML = displayLines.map((line) => `<p>${escapeHTML(line)}</p>`).join("");
 }
 
-function renderActiveStory() {
-  const article = state.articles.find((item) => item.id === state.activeId) || filteredArticles()[0];
+function openBriefing() {
+  state.previousFocus = document.activeElement;
+  els.briefingOverlay.hidden = false;
+  els.briefingButton.setAttribute("aria-expanded", "true");
+  document.body.classList.add("briefing-open");
+  els.closeBriefingButton.focus();
+}
+
+function closeBriefing() {
+  if (els.briefingOverlay.hidden) {
+    return;
+  }
+  els.briefingOverlay.hidden = true;
+  els.briefingButton.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("briefing-open");
+  if (state.previousFocus && typeof state.previousFocus.focus === "function") {
+    state.previousFocus.focus();
+  }
+}
+
+function renderActiveStory(articles) {
+  const article = articles.find((item) => item.id === state.activeId) || articles[0];
   if (!article) {
     els.activeStory.innerHTML = "";
     return;
@@ -392,7 +537,7 @@ function renderFeed(articles) {
 function setActive(id, panMap = false) {
   state.activeId = id;
   const article = state.articles.find((item) => item.id === id);
-  if (article && panMap) {
+  if (article && panMap && state.map && Number.isFinite(article.lat) && Number.isFinite(article.lon)) {
     state.map.flyTo([article.lat, article.lon], Math.max(state.map.getZoom(), 4), {
       duration: 0.65,
     });
@@ -406,7 +551,8 @@ function setActive(id, panMap = false) {
 
 function filteredArticles() {
   return state.articles.filter((article) => {
-    const categoryMatch = state.activeCategory === "all" || article.category === state.activeCategory;
+    const categoryMatch =
+      state.activeCategories.size === 0 || state.activeCategories.has(article.category);
     const regionMatch =
       state.activeRegion === "all" ||
       article.region === state.activeRegion ||
@@ -419,6 +565,13 @@ function filteredArticles() {
         .includes(query);
     return categoryMatch && regionMatch && textMatch;
   });
+}
+
+function syncActiveArticle(articles) {
+  if (articles.some((article) => article.id === state.activeId)) {
+    return;
+  }
+  state.activeId = articles.length ? articles[0].id : null;
 }
 
 function prioritizeMapArticles(articles) {
@@ -448,33 +601,6 @@ function popupHTML(article) {
         ${article.url ? `<a href="${escapeAttr(article.url)}" target="_blank" rel="noreferrer">Open</a>` : ""}
       </div>
     </div>`;
-}
-
-function toggleNarration() {
-  if (!("speechSynthesis" in window)) {
-    els.narrateButton.textContent = "No voice";
-    return;
-  }
-  if (state.speaking) {
-    window.speechSynthesis.cancel();
-    state.speaking = false;
-    els.narrateButton.textContent = "Narrate";
-    return;
-  }
-  const script = (state.briefing && state.briefing.script) || "";
-  if (!script) {
-    return;
-  }
-  const utterance = new SpeechSynthesisUtterance(script);
-  utterance.rate = 0.95;
-  utterance.pitch = 1;
-  utterance.onend = () => {
-    state.speaking = false;
-    els.narrateButton.textContent = "Narrate";
-  };
-  state.speaking = true;
-  els.narrateButton.textContent = "Stop";
-  window.speechSynthesis.speak(utterance);
 }
 
 function statusText(payload) {
