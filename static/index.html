@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>World Signal</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIINfQHKZbbpRYG4aQdBnhE5tK8E2M7G2+M="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="map" aria-label="World news map"></div>
+
+      <nav class="map-actions" aria-label="Map views">
+        <button class="map-action is-active" type="button" data-map-view="world">World</button>
+        <button class="map-action" type="button" data-map-view="europe">Europe</button>
+        <button class="map-action" type="button" data-map-view="portugal">Portugal</button>
+        <button class="map-action" id="fitStoriesButton" type="button">Fit Stories</button>
+      </nav>
+
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <h1>World Signal</h1>
+            <p id="statusLine">Loading live feeds</p>
+          </div>
+        </div>
+        <div id="marketStrip" class="market-strip" aria-label="Market snapshot"></div>
+        <div class="top-actions">
+          <label class="auto-refresh">
+            <input id="autoRefreshToggle" type="checkbox" checked />
+            <span>Auto</span>
+          </label>
+          <button id="refreshButton" class="icon-button" type="button" title="Refresh">Refresh</button>
+        </div>
+      </header>
+
+      <aside class="panel control-panel" aria-label="Filters">
+        <div class="panel-title">
+          <div>
+            <span class="eyebrow">Control</span>
+            <h2>Filters</h2>
+          </div>
+          <button id="clearFiltersButton" class="ghost-button" type="button">Clear</button>
+        </div>
+
+        <div class="panel-section">
+          <div class="section-heading">
+            <span>Channels</span>
+            <strong id="articleCount">0</strong>
+          </div>
+          <div id="categoryFilters" class="segmented"></div>
+        </div>
+
+        <div class="panel-section">
+          <label class="field-label" for="regionSelect">Region</label>
+          <select id="regionSelect"></select>
+        </div>
+
+        <div class="panel-section">
+          <label class="field-label" for="searchInput">Search</label>
+          <input id="searchInput" type="search" placeholder="Markets, Portugal, elections, cyber..." />
+        </div>
+
+        <div class="panel-section metrics">
+          <div>
+            <span>Sources</span>
+            <strong id="sourceMetric">0/0</strong>
+          </div>
+          <div>
+            <span>Regions</span>
+            <strong id="regionMetric">0</strong>
+          </div>
+          <div>
+            <span>Countries</span>
+            <strong id="countryMetric">0</strong>
+          </div>
+        </div>
+
+        <div class="panel-section source-health">
+          <div class="section-heading">
+            <span>Source Health</span>
+          </div>
+          <div id="sourceList"></div>
+        </div>
+      </aside>
+
+      <aside class="panel intelligence-panel" aria-label="Briefing and stories">
+        <div class="assistant-header">
+          <div>
+            <span class="eyebrow">Atlas</span>
+            <h2>Briefing</h2>
+          </div>
+          <button id="narrateButton" class="icon-button" type="button" title="Narrate">Narrate</button>
+        </div>
+        <div id="briefingLines" class="briefing-lines"></div>
+
+        <div id="activeStory" class="active-story"></div>
+
+        <div class="feed-header">
+          <span>Live Feed</span>
+          <span id="feedCount">0</span>
+        </div>
+        <div id="storyFeed" class="story-feed"></div>
+      </aside>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="/app.js"></script>
+  </body>
+</html>
