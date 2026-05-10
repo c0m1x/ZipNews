@@ -30,6 +30,7 @@ import xml.etree.ElementTree as ET
 PORT = int(os.environ.get("PORT", "8000"))
 NEWS_CACHE_SECONDS = int(os.environ.get("NEWS_CACHE_SECONDS", "600"))
 MARKET_CACHE_SECONDS = int(os.environ.get("MARKET_CACHE_SECONDS", "120"))
+SIGNAL_CACHE_SECONDS = int(os.environ.get("SIGNAL_CACHE_SECONDS", "600"))
 FEED_TIMEOUT_SECONDS = int(os.environ.get("FEED_TIMEOUT_SECONDS", "8"))
 MAX_ITEMS_PER_SOURCE = int(os.environ.get("MAX_ITEMS_PER_SOURCE", "16"))
 USER_AGENT = (
@@ -38,12 +39,29 @@ USER_AGENT = (
 )
 
 
+def google_news_search_url(query, hl="en-US", gl="US", ceid="US:en"):
+    return (
+        "https://news.google.com/rss/search?"
+        f"q={quote(query)}&hl={quote(hl)}&gl={quote(gl)}&ceid={quote(ceid, safe=':')}"
+    )
+
+
 CATEGORIES = {
     "news": {"label": "News", "color": "#2f6fed"},
     "economy": {"label": "Economy", "color": "#0f9f8f"},
     "politics": {"label": "Politics", "color": "#d05a3b"},
     "sport": {"label": "Sport", "color": "#7b56d9"},
     "cyber": {"label": "Cybersecurity", "color": "#d69b16"},
+}
+
+
+SIGNAL_CATEGORIES = {
+    "data": {"label": "AI & Data", "color": "#5c6bc0"},
+    "conflict": {"label": "War & Defense", "color": "#c44735"},
+    "posture": {"label": "Defense Posture", "color": "#4f5b66"},
+    "maritime": {"label": "Ships & Ports", "color": "#007c89"},
+    "aviation": {"label": "Air Transport", "color": "#b7791f"},
+    "trade": {"label": "Trade", "color": "#227a52"},
 }
 
 
@@ -456,8 +474,191 @@ SOURCES = [
 ]
 
 
+SIGNAL_SOURCES = [
+    {
+        "name": "Palantir & Defense AI",
+        "category": "data",
+        "url": google_news_search_url(
+            'Palantir OR Anduril OR "defense AI" OR "military AI" OR "battlefield software" when:14d'
+        ),
+        "region": "North America",
+        "country": "United States",
+        "lat": 39.7392,
+        "lon": -104.9903,
+    },
+    {
+        "name": "Defense Data Platforms",
+        "category": "data",
+        "url": google_news_search_url(
+            '"battle management" OR "command and control" OR "military data platform" OR "defense software" when:14d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 20.0,
+        "lon": 0.0,
+    },
+    {
+        "name": "War Headlines",
+        "category": "conflict",
+        "url": google_news_search_url(
+            'war OR "military strike" OR ceasefire OR "armed conflict" OR "missile attack" when:7d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 20.0,
+        "lon": 0.0,
+    },
+    {
+        "name": "Ukraine War",
+        "category": "conflict",
+        "url": google_news_search_url(
+            '"Ukraine war" OR "Russia Ukraine" OR frontline OR drones when:7d'
+        ),
+        "region": "Europe",
+        "country": "Ukraine",
+        "lat": 50.4501,
+        "lon": 30.5234,
+    },
+    {
+        "name": "Middle East Conflict",
+        "category": "conflict",
+        "url": google_news_search_url(
+            'Gaza OR Israel OR Lebanon OR Iran OR Houthi OR "Red Sea" conflict when:7d'
+        ),
+        "region": "Middle East",
+        "country": "Israel",
+        "lat": 31.7683,
+        "lon": 35.2137,
+    },
+    {
+        "name": "NATO Posture",
+        "category": "posture",
+        "url": google_news_search_url(
+            '"NATO exercise" OR "NATO readiness" OR "NATO eastern flank" OR "NATO deployment" when:14d'
+        ),
+        "region": "Europe",
+        "country": "NATO",
+        "lat": 50.0,
+        "lon": 20.0,
+    },
+    {
+        "name": "Indo-Pacific Defense Posture",
+        "category": "posture",
+        "url": google_news_search_url(
+            '"South China Sea" OR "Taiwan Strait" OR "PLA exercise" OR "Chinese military exercise" OR "Indo-Pacific exercise" when:14d'
+        ),
+        "region": "Asia-Pacific",
+        "country": "Regional",
+        "lat": 16.0,
+        "lon": 122.0,
+    },
+    {
+        "name": "Carrier Groups & Exercises",
+        "category": "posture",
+        "url": google_news_search_url(
+            '"carrier strike group" OR "naval exercise" OR "joint military exercise" OR "amphibious exercise" when:14d'
+        ),
+        "region": "Global",
+        "country": "Regional",
+        "lat": 20.0,
+        "lon": 0.0,
+    },
+    {
+        "name": "Shipping & Ports",
+        "category": "maritime",
+        "url": google_news_search_url(
+            'shipping OR "container freight" OR "port congestion" OR "maritime trade" when:14d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 1.3521,
+        "lon": 103.8198,
+    },
+    {
+        "name": "Sea Lanes & Tankers",
+        "category": "maritime",
+        "url": google_news_search_url(
+            '"Red Sea shipping" OR "Suez Canal" OR tanker rates OR "vessel tracking" when:14d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 30.0444,
+        "lon": 31.2357,
+    },
+    {
+        "name": "Air Cargo",
+        "category": "aviation",
+        "url": google_news_search_url(
+            '"air cargo" OR "freight aircraft" OR "cargo airlines" OR "air freight" when:14d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 35.6762,
+        "lon": 139.6503,
+    },
+    {
+        "name": "Airport Logistics",
+        "category": "aviation",
+        "url": google_news_search_url(
+            '"airport logistics" OR "airline cargo" OR "air freight rates" OR "cargo hub" when:14d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 25.2532,
+        "lon": 55.3657,
+    },
+    {
+        "name": "Global Trade",
+        "category": "trade",
+        "url": google_news_search_url(
+            'tariffs OR exports OR imports OR "trade deal" OR sanctions when:14d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 50.8503,
+        "lon": 4.3517,
+    },
+    {
+        "name": "Supply Chain",
+        "category": "trade",
+        "url": google_news_search_url(
+            '"supply chain" OR reshoring OR customs OR "trade route" OR "export controls" when:14d'
+        ),
+        "region": "Global",
+        "country": "Global",
+        "lat": 20.0,
+        "lon": 0.0,
+    },
+    {
+        "name": "Portugal & EU Trade",
+        "category": "trade",
+        "url": google_news_search_url(
+            '"Portugal exports" OR "EU trade" OR "European ports" OR "European supply chain" when:14d',
+            hl="en-GB",
+            gl="GB",
+            ceid="GB:en",
+        ),
+        "region": "Europe",
+        "country": "Portugal",
+        "lat": 38.7223,
+        "lon": -9.1393,
+    },
+]
+
+
 LOCATIONS = [
     ("Global", "Global", "Global", 20.0, 0.0, ["global", "worldwide", "international"]),
+    ("Red Sea", "Trade Routes", "Red Sea", 18.5, 38.0, ["red sea"]),
+    ("Suez Canal", "Trade Routes", "Egypt", 30.5852, 32.2654, ["suez canal", "suez"]),
+    ("Bab el-Mandeb", "Trade Routes", "Yemen", 12.5833, 43.3333, ["bab el-mandeb", "bab al-mandab"]),
+    ("Strait of Hormuz", "Trade Routes", "Iran", 26.5667, 56.2500, ["strait of hormuz", "hormuz"]),
+    ("Panama Canal", "Trade Routes", "Panama", 9.0800, -79.6800, ["panama canal"]),
+    ("Singapore Strait", "Trade Routes", "Singapore", 1.2250, 103.7500, ["singapore strait", "strait of singapore"]),
+    ("South China Sea", "Asia-Pacific", "South China Sea", 12.0000, 113.0000, ["south china sea"]),
+    ("Taiwan Strait", "Asia-Pacific", "Taiwan", 24.0000, 119.5000, ["taiwan strait"]),
+    ("Black Sea", "Europe", "Black Sea", 43.0000, 34.0000, ["black sea"]),
+    ("Gulf of Aden", "Trade Routes", "Gulf of Aden", 12.5000, 48.0000, ["gulf of aden"]),
+    ("English Channel", "Europe", "United Kingdom", 50.2000, -1.7000, ["english channel"]),
     ("Portugal", "Europe", "Portugal", 38.7223, -9.1393, ["portugal", "portuguese", "lisbon", "lisboa", "porto"]),
     ("Spain", "Europe", "Spain", 40.4168, -3.7038, ["spain", "spanish", "madrid", "barcelona", "catalonia"]),
     ("France", "Europe", "France", 48.8566, 2.3522, ["france", "french", "paris"]),
@@ -511,6 +712,121 @@ LOCATIONS = [
     ("Malaysia", "Asia-Pacific", "Malaysia", 3.1390, 101.6869, ["malaysia", "malaysian", "kuala lumpur"]),
     ("Australia", "Oceania", "Australia", -35.2809, 149.1300, ["australia", "australian", "canberra", "sydney", "melbourne"]),
     ("New Zealand", "Oceania", "New Zealand", -41.2865, 174.7762, ["new zealand", "auckland", "wellington"]),
+]
+
+
+TRANSPORT_LOCATIONS = [
+    ("maritime", "Red Sea", "Trade Routes", "Red Sea", 18.5, 38.0, ["red sea"]),
+    ("maritime", "Suez Canal", "Trade Routes", "Egypt", 30.5852, 32.2654, ["suez canal", "suez"]),
+    ("maritime", "Bab el-Mandeb", "Trade Routes", "Yemen", 12.5833, 43.3333, ["bab el-mandeb", "bab al-mandab"]),
+    ("maritime", "Strait of Hormuz", "Trade Routes", "Iran", 26.5667, 56.25, ["strait of hormuz", "hormuz"]),
+    ("maritime", "Panama Canal", "Trade Routes", "Panama", 9.08, -79.68, ["panama canal"]),
+    ("maritime", "Singapore Strait", "Trade Routes", "Singapore", 1.225, 103.75, ["singapore strait", "strait of singapore"]),
+    ("maritime", "South China Sea", "Asia-Pacific", "South China Sea", 12.0, 113.0, ["south china sea"]),
+    ("maritime", "Taiwan Strait", "Asia-Pacific", "Taiwan", 24.0, 119.5, ["taiwan strait"]),
+    ("maritime", "Black Sea", "Europe", "Black Sea", 43.0, 34.0, ["black sea"]),
+    ("maritime", "Gulf of Aden", "Trade Routes", "Gulf of Aden", 12.5, 48.0, ["gulf of aden"]),
+    ("maritime", "English Channel", "Europe", "United Kingdom", 50.2, -1.7, ["english channel"]),
+    ("maritime", "Port of Shanghai", "Asia-Pacific", "China", 31.2304, 121.4737, ["port of shanghai", "shanghai port", "shanghai"]),
+    ("maritime", "Ningbo-Zhoushan", "Asia-Pacific", "China", 29.8683, 121.544, ["ningbo-zhoushan", "ningbo zhoushan", "ningbo"]),
+    ("maritime", "Port of Singapore", "Asia-Pacific", "Singapore", 1.2644, 103.84, ["port of singapore", "singapore port"]),
+    ("maritime", "Port Klang", "Asia-Pacific", "Malaysia", 3.0017, 101.3928, ["port klang", "kelang"]),
+    ("maritime", "Tanjung Pelepas", "Asia-Pacific", "Malaysia", 1.363, 103.55, ["tanjung pelepas", "pelepas"]),
+    ("maritime", "Laem Chabang", "Asia-Pacific", "Thailand", 13.0833, 100.8833, ["laem chabang"]),
+    ("maritime", "Tanjung Priok", "Asia-Pacific", "Indonesia", -6.1042, 106.8865, ["tanjung priok", "jakarta port"]),
+    ("maritime", "Cat Lai", "Asia-Pacific", "Vietnam", 10.7694, 106.7897, ["cat lai", "ho chi minh port", "saigon port"]),
+    ("maritime", "Manila Port", "Asia-Pacific", "Philippines", 14.5833, 120.9667, ["manila port", "port of manila"]),
+    ("maritime", "Busan Port", "Asia-Pacific", "South Korea", 35.1028, 129.0403, ["busan port", "port of busan", "busan"]),
+    ("maritime", "Yokohama Port", "Asia-Pacific", "Japan", 35.4437, 139.638, ["yokohama port", "port of yokohama"]),
+    ("maritime", "Tokyo Port", "Asia-Pacific", "Japan", 35.6206, 139.7796, ["tokyo port", "port of tokyo"]),
+    ("maritime", "Kaohsiung Port", "Asia-Pacific", "Taiwan", 22.6163, 120.2812, ["kaohsiung port", "port of kaohsiung", "kaohsiung"]),
+    ("maritime", "Hong Kong Port", "Asia-Pacific", "Hong Kong", 22.3193, 114.1694, ["hong kong port", "port of hong kong"]),
+    ("maritime", "Yantian", "Asia-Pacific", "China", 22.5817, 114.2767, ["yantian", "shenzhen port", "port of shenzhen"]),
+    ("maritime", "Qingdao Port", "Asia-Pacific", "China", 36.0649, 120.3826, ["qingdao port", "port of qingdao", "qingdao"]),
+    ("maritime", "Tianjin Port", "Asia-Pacific", "China", 39.0094, 117.7108, ["tianjin port", "port of tianjin", "tianjin"]),
+    ("maritime", "Jebel Ali", "Middle East", "United Arab Emirates", 25.0118, 55.0611, ["jebel ali", "jebel ali port"]),
+    ("maritime", "King Abdullah Port", "Middle East", "Saudi Arabia", 22.4056, 39.0811, ["king abdullah port"]),
+    ("maritime", "Nhava Sheva", "Asia-Pacific", "India", 18.949, 72.951, ["nhava sheva", "jawaharlal nehru port", "jnpt"]),
+    ("maritime", "Colombo Port", "Asia-Pacific", "Sri Lanka", 6.9475, 79.8458, ["colombo port", "port of colombo", "colombo"]),
+    ("maritime", "Chittagong Port", "Asia-Pacific", "Bangladesh", 22.3075, 91.8003, ["chittagong port", "chattogram port"]),
+    ("maritime", "Rotterdam Port", "Europe", "Netherlands", 51.955, 4.141, ["rotterdam port", "port of rotterdam", "rotterdam"]),
+    ("maritime", "Antwerp-Bruges", "Europe", "Belgium", 51.303, 4.311, ["antwerp-bruges", "port of antwerp", "antwerp port", "antwerp"]),
+    ("maritime", "Hamburg Port", "Europe", "Germany", 53.5461, 9.9661, ["hamburg port", "port of hamburg", "hamburg"]),
+    ("maritime", "Felixstowe", "Europe", "United Kingdom", 51.9542, 1.3511, ["felixstowe", "port of felixstowe"]),
+    ("maritime", "Piraeus Port", "Europe", "Greece", 37.942, 23.646, ["piraeus", "port of piraeus"]),
+    ("maritime", "Valencia Port", "Europe", "Spain", 39.4487, -0.3167, ["valencia port", "port of valencia"]),
+    ("maritime", "Algeciras Port", "Europe", "Spain", 36.132, -5.441, ["algeciras", "port of algeciras"]),
+    ("maritime", "Port of Sines", "Europe", "Portugal", 37.956, -8.87, ["port of sines", "sines port", "sines"]),
+    ("maritime", "Port of Lisbon", "Europe", "Portugal", 38.706, -9.136, ["port of lisbon", "lisbon port"]),
+    ("maritime", "Los Angeles Port", "North America", "United States", 33.7361, -118.2639, ["port of los angeles", "los angeles port"]),
+    ("maritime", "Long Beach Port", "North America", "United States", 33.7542, -118.2165, ["port of long beach", "long beach port"]),
+    ("maritime", "New York-New Jersey Port", "North America", "United States", 40.6681, -74.0451, ["port of new york", "new york-new jersey", "new york new jersey port"]),
+    ("maritime", "Savannah Port", "North America", "United States", 32.128, -81.151, ["savannah port", "port of savannah"]),
+    ("maritime", "Houston Port", "North America", "United States", 29.73, -95.265, ["houston port", "port of houston"]),
+    ("maritime", "Vancouver Port", "North America", "Canada", 49.289, -123.108, ["vancouver port", "port of vancouver"]),
+    ("maritime", "Santos Port", "South America", "Brazil", -23.967, -46.3, ["santos port", "port of santos"]),
+    ("maritime", "Durban Port", "Africa", "South Africa", -29.875, 31.05, ["durban port", "port of durban"]),
+    ("maritime", "Tanger Med", "Africa", "Morocco", 35.884, -5.506, ["tanger med", "tangier med"]),
+    ("aviation", "Memphis International", "North America", "United States", 35.0424, -89.9767, ["memphis international", "memphis airport", "mem"]),
+    ("aviation", "Louisville Muhammad Ali International", "North America", "United States", 38.1744, -85.736, ["louisville airport", "louisville muhammad ali", "sdf"]),
+    ("aviation", "Anchorage Ted Stevens", "North America", "United States", 61.1744, -149.9964, ["anchorage airport", "ted stevens", "anc"]),
+    ("aviation", "Los Angeles International", "North America", "United States", 33.9416, -118.4085, ["los angeles international", "lax"]),
+    ("aviation", "Chicago O'Hare", "North America", "United States", 41.9742, -87.9073, ["o'hare", "ohare", "ord"]),
+    ("aviation", "Miami International", "North America", "United States", 25.7959, -80.287, ["miami international", "mia"]),
+    ("aviation", "JFK Airport", "North America", "United States", 40.6413, -73.7781, ["jfk airport", "john f. kennedy", "jfk"]),
+    ("aviation", "Cincinnati/Northern Kentucky", "North America", "United States", 39.0489, -84.6678, ["cincinnati/northern kentucky", "cincinnati airport", "cvg"]),
+    ("aviation", "Liege Airport", "Europe", "Belgium", 50.6374, 5.4432, ["liege airport", "liège airport", "lgg"]),
+    ("aviation", "Leipzig/Halle Airport", "Europe", "Germany", 51.4239, 12.2364, ["leipzig/halle", "leipzig halle", "lej"]),
+    ("aviation", "Frankfurt Airport", "Europe", "Germany", 50.0379, 8.5622, ["frankfurt airport", "fra"]),
+    ("aviation", "Amsterdam Schiphol", "Europe", "Netherlands", 52.3105, 4.7683, ["schiphol", "amsterdam airport", "ams"]),
+    ("aviation", "Paris Charles de Gaulle", "Europe", "France", 49.0097, 2.5479, ["charles de gaulle", "paris cdg", "cdg"]),
+    ("aviation", "London Heathrow", "Europe", "United Kingdom", 51.47, -0.4543, ["heathrow", "london heathrow", "lhr"]),
+    ("aviation", "London Gatwick", "Europe", "United Kingdom", 51.1537, -0.1821, ["gatwick", "london gatwick", "lgw"]),
+    ("aviation", "East Midlands Airport", "Europe", "United Kingdom", 52.8311, -1.3281, ["east midlands airport", "ema"]),
+    ("aviation", "Luxembourg Findel", "Europe", "Luxembourg", 49.6266, 6.2115, ["luxembourg findel", "luxembourg airport", "lux"]),
+    ("aviation", "Istanbul Airport", "Middle East", "Turkey", 41.2753, 28.7519, ["istanbul airport", "ist"]),
+    ("aviation", "Dubai World Central", "Middle East", "United Arab Emirates", 24.8964, 55.1614, ["dubai world central", "al maktoum", "dwc"]),
+    ("aviation", "Dubai International", "Middle East", "United Arab Emirates", 25.2532, 55.3657, ["dubai international", "dxb"]),
+    ("aviation", "Doha Hamad", "Middle East", "Qatar", 25.2731, 51.6081, ["doha hamad", "hamad international", "doh"]),
+    ("aviation", "Hong Kong International", "Asia-Pacific", "Hong Kong", 22.308, 113.9185, ["hong kong international", "hong kong", "hkg"]),
+    ("aviation", "Shanghai Pudong", "Asia-Pacific", "China", 31.1443, 121.8083, ["shanghai pudong", "pudong airport", "pvg"]),
+    ("aviation", "Shenzhen Bao'an", "Asia-Pacific", "China", 22.6393, 113.8107, ["shenzhen bao'an", "shenzhen baoan", "szx"]),
+    ("aviation", "Guangzhou Baiyun", "Asia-Pacific", "China", 23.3924, 113.2988, ["guangzhou baiyun", "can"]),
+    ("aviation", "Incheon Airport", "Asia-Pacific", "South Korea", 37.4602, 126.4407, ["incheon airport", "icn"]),
+    ("aviation", "Tokyo Narita", "Asia-Pacific", "Japan", 35.7719, 140.3929, ["narita", "nrt"]),
+    ("aviation", "Singapore Changi", "Asia-Pacific", "Singapore", 1.3644, 103.9915, ["singapore changi", "changi", "sin"]),
+    ("aviation", "Taipei Taoyuan", "Asia-Pacific", "Taiwan", 25.0797, 121.2342, ["taipei taoyuan", "taoyuan airport", "tpe"]),
+    ("aviation", "Bangkok Suvarnabhumi", "Asia-Pacific", "Thailand", 13.69, 100.7501, ["suvarnabhumi", "bangkok airport", "bkk"]),
+    ("aviation", "Kuala Lumpur International", "Asia-Pacific", "Malaysia", 2.7456, 101.7072, ["kuala lumpur international", "klia", "kul"]),
+    ("aviation", "Sydney Airport", "Oceania", "Australia", -33.9399, 151.1753, ["sydney airport", "syd"]),
+    ("aviation", "Melbourne Airport", "Oceania", "Australia", -37.669, 144.841, ["melbourne airport", "mel"]),
+    ("aviation", "Addis Ababa Bole", "Africa", "Ethiopia", 8.9779, 38.7993, ["addis ababa bole", "bole airport", "add"]),
+    ("aviation", "Nairobi Jomo Kenyatta", "Africa", "Kenya", -1.3192, 36.9278, ["jomo kenyatta", "nairobi airport", "nbo"]),
+    ("aviation", "Johannesburg OR Tambo", "Africa", "South Africa", -26.1337, 28.242, ["or tambo", "johannesburg airport", "jnb"]),
+    ("aviation", "Sao Paulo Guarulhos", "South America", "Brazil", -23.4356, -46.4731, ["sao paulo guarulhos", "são paulo guarulhos", "gru"]),
+    ("aviation", "Bogota El Dorado", "South America", "Colombia", 4.7016, -74.1469, ["bogota el dorado", "bogotá el dorado", "el dorado airport", "bog"]),
+]
+
+
+DEFENSE_ZONES = [
+    ("Middle East", "Defense Zones", "Regional", 29.0, 42.0, ["middle east"]),
+    ("Caribbean Sea", "Defense Zones", "Regional", 15.5, -75.0, ["caribbean sea", "caribbean", "venezuela"]),
+    ("Eastern Mediterranean", "Defense Zones", "Regional", 34.5, 27.0, ["eastern mediterranean", "east mediterranean"]),
+    ("South China Sea", "Defense Zones", "Regional", 12.0, 113.0, ["south china sea"]),
+    ("Taiwan Strait", "Defense Zones", "Regional", 24.0, 119.5, ["taiwan strait"]),
+    ("Baltic Sea", "Defense Zones", "Regional", 58.5, 20.0, ["baltic sea", "baltic region"]),
+    ("NATO Eastern Flank", "Defense Zones", "NATO", 52.0, 24.0, ["nato eastern flank", "eastern flank", "poland", "romania", "baltic states"]),
+    ("Red Sea", "Defense Zones", "Regional", 18.5, 38.0, ["red sea"]),
+    ("Persian Gulf", "Defense Zones", "Regional", 26.5, 52.0, ["persian gulf", "arabian gulf"]),
+    ("Strait of Hormuz", "Defense Zones", "Regional", 26.5667, 56.25, ["strait of hormuz", "hormuz"]),
+    ("Black Sea", "Defense Zones", "Regional", 43.0, 34.0, ["black sea"]),
+    ("Korean Peninsula", "Defense Zones", "Regional", 38.0, 127.5, ["korean peninsula", "north korea", "south korea"]),
+    ("East China Sea", "Defense Zones", "Regional", 29.0, 125.0, ["east china sea"]),
+    ("Philippine Sea", "Defense Zones", "Regional", 18.0, 134.0, ["philippine sea"]),
+    ("Western Pacific", "Defense Zones", "Regional", 15.0, 145.0, ["western pacific", "west pacific"]),
+    ("Arctic High North", "Defense Zones", "Regional", 72.0, 20.0, ["arctic", "high north"]),
+    ("North Atlantic", "Defense Zones", "Regional", 48.0, -30.0, ["north atlantic"]),
+    ("Indo-Pacific", "Defense Zones", "Regional", 8.0, 112.0, ["indo-pacific", "indopacific"]),
 ]
 
 
@@ -640,6 +956,7 @@ MARKET_INSTRUMENTS = [
 _cache = {
     "news": {"expires": 0, "payload": None},
     "markets": {"expires": 0, "payload": None},
+    "signals": {"expires": 0, "payload": None},
 }
 
 
@@ -743,6 +1060,54 @@ for loc_name, region, country, lat, lon, aliases in LOCATIONS:
         )
 _LOCATION_PATTERNS.sort(key=lambda item: item[0], reverse=True)
 
+_TRANSPORT_PATTERNS = {"maritime": [], "aviation": []}
+for mode, loc_name, region, country, lat, lon, aliases in TRANSPORT_LOCATIONS:
+    normalized_mode = mode.lower()
+    for alias in sorted(aliases, key=len, reverse=True):
+        normalized_alias = strip_accents(alias.lower())
+        if len(normalized_alias) < 3:
+            continue
+        pattern = re.compile(r"(?<![a-z0-9])" + re.escape(normalized_alias) + r"(?![a-z0-9])")
+        _TRANSPORT_PATTERNS.setdefault(normalized_mode, []).append(
+            (
+                len(normalized_alias),
+                pattern,
+                {
+                    "name": loc_name,
+                    "region": region,
+                    "country": country,
+                    "lat": lat,
+                    "lon": lon,
+                    "precision": "radar",
+                },
+            )
+        )
+for patterns in _TRANSPORT_PATTERNS.values():
+    patterns.sort(key=lambda item: item[0], reverse=True)
+
+_DEFENSE_ZONE_PATTERNS = []
+for loc_name, region, country, lat, lon, aliases in DEFENSE_ZONES:
+    for alias in sorted(aliases, key=len, reverse=True):
+        normalized_alias = strip_accents(alias.lower())
+        if len(normalized_alias) < 3:
+            continue
+        pattern = re.compile(r"(?<![a-z0-9])" + re.escape(normalized_alias) + r"(?![a-z0-9])")
+        _DEFENSE_ZONE_PATTERNS.append(
+            (
+                len(normalized_alias),
+                pattern,
+                {
+                    "name": loc_name,
+                    "region": region,
+                    "country": country,
+                    "lat": lat,
+                    "lon": lon,
+                    "precision": "strategic-zone",
+                },
+            )
+        )
+_DEFENSE_ZONE_PATTERNS.sort(key=lambda item: item[0], reverse=True)
+
 
 def detect_location(text, source):
     haystack = normalize_for_match(text)
@@ -750,6 +1115,50 @@ def detect_location(text, source):
         if pattern.search(haystack):
             return dict(location)
     return location_from_source(source)
+
+
+def unmapped_transport_location(category):
+    label = "Ship position pending" if category == "maritime" else "Air cargo position pending"
+    return {
+        "name": label,
+        "region": "Radar pending",
+        "country": "Radar pending",
+        "lat": None,
+        "lon": None,
+        "precision": "unmapped",
+    }
+
+
+def unmapped_posture_location():
+    return {
+        "name": "Strategic zone pending",
+        "region": "Posture pending",
+        "country": "Posture pending",
+        "lat": None,
+        "lon": None,
+        "precision": "unmapped",
+    }
+
+
+def detect_signal_location(text, source):
+    category = source.get("category")
+    if category == "posture":
+        haystack = normalize_for_match(text)
+        for _, pattern, location in _DEFENSE_ZONE_PATTERNS:
+            if pattern.search(haystack):
+                return dict(location)
+        return unmapped_posture_location()
+
+    if category not in {"maritime", "aviation"}:
+        location = detect_location(text, source)
+        location["precision"] = "general"
+        return location
+
+    haystack = normalize_for_match(text)
+    for _, pattern, location in _TRANSPORT_PATTERNS.get(category, []):
+        if pattern.search(haystack):
+            return dict(location)
+    return unmapped_transport_location(category)
 
 
 def summarize(description, title):
@@ -782,6 +1191,7 @@ def parse_feed(source, raw):
     root = ET.fromstring(raw)
     feed_items = extract_feed_items(root)
     articles = []
+    category_meta = category_metadata(source["category"])
     for item in feed_items[:MAX_ITEMS_PER_SOURCE]:
         title = child_text(item, "title")
         if not title:
@@ -801,10 +1211,11 @@ def parse_feed(source, raw):
 
         source_name = source_from_item(item, source["name"])
         joined = f"{title}. {description}. {source_name}"
-        location = detect_location(joined, source)
+        location = detect_signal_location(joined, source)
         article_id = stable_id(link or guid, title, source_name)
         age_hours = max(0, ((now.timestamp() - timestamp) / 3600.0)) if timestamp else 72
         impact = score_article(title, description, source["category"], age_hours)
+        mapped = location.get("lat") is not None and location.get("lon") is not None
 
         articles.append(
             {
@@ -815,8 +1226,8 @@ def parse_feed(source, raw):
                 "source": source_name,
                 "feed": source["name"],
                 "category": source["category"],
-                "categoryLabel": CATEGORIES[source["category"]]["label"],
-                "color": CATEGORIES[source["category"]]["color"],
+                "categoryLabel": category_meta["label"],
+                "color": category_meta["color"],
                 "publishedAt": published_at.isoformat() if published_at else None,
                 "timestamp": timestamp,
                 "region": location["region"],
@@ -824,10 +1235,20 @@ def parse_feed(source, raw):
                 "location": location["name"],
                 "lat": location["lat"],
                 "lon": location["lon"],
+                "mapped": mapped,
+                "locationPrecision": location.get("precision", "general"),
                 "impact": impact,
             }
         )
     return articles
+
+
+def category_metadata(category):
+    return (
+        CATEGORIES.get(category)
+        or SIGNAL_CATEGORIES.get(category)
+        or {"label": category.replace("_", " ").title(), "color": "#637083"}
+    )
 
 
 def score_article(title, description, category, age_hours):
@@ -839,13 +1260,26 @@ def score_article(title, description, category, age_hours):
         score += 2
     elif age_hours <= 72:
         score += 1
-    if category in {"economy", "politics", "cyber"}:
+    if category in {"economy", "politics", "cyber", "data", "conflict", "posture", "maritime", "aviation", "trade"}:
         score += 1
     for keyword in (
         "breaking",
         "election",
         "war",
         "attack",
+        "strike",
+        "ceasefire",
+        "palantir",
+        "anduril",
+        "nato",
+        "exercise",
+        "carrier strike group",
+        "south china sea",
+        "taiwan strait",
+        "shipping",
+        "freight",
+        "tariff",
+        "sanction",
         "inflation",
         "rates",
         "central bank",
@@ -970,6 +1404,40 @@ def filter_news(payload, query):
     result["articles"] = articles[: max(1, min(limit, 500))]
     result["filteredStats"] = build_stats(result["articles"], payload["sources"])
     return result
+
+
+def aggregate_signals(force=False):
+    cached = _cache["signals"]
+    if not force and cached["payload"] and cached["expires"] > time.time():
+        return cached["payload"]
+
+    articles = []
+    statuses = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(fetch_feed, source) for source in SIGNAL_SOURCES]
+        for future in as_completed(futures):
+            feed_articles, status = future.result()
+            articles.extend(feed_articles)
+            statuses.append(status)
+
+    deduped = {}
+    for article in articles:
+        key = normalize_for_match(article["title"])
+        if key not in deduped or article["timestamp"] > deduped[key]["timestamp"]:
+            deduped[key] = article
+
+    final_articles = sorted(deduped.values(), key=lambda article: article["timestamp"], reverse=True)
+    payload = {
+        "generatedAt": iso_now(),
+        "cacheSeconds": SIGNAL_CACHE_SECONDS,
+        "articles": final_articles,
+        "sources": sorted(statuses, key=lambda status: status["name"]),
+        "categories": SIGNAL_CATEGORIES,
+        "stats": build_stats(final_articles, statuses),
+    }
+    cached["payload"] = payload
+    cached["expires"] = time.time() + SIGNAL_CACHE_SECONDS
+    return payload
 
 
 def build_briefing(force=False):
@@ -1386,6 +1854,10 @@ class AppHandler(SimpleHTTPRequestHandler):
         if parsed.path == "/api/markets":
             respond_json(self, fetch_markets(force=force))
             return
+        if parsed.path == "/api/signals":
+            payload = aggregate_signals(force=force)
+            respond_json(self, filter_news(payload, query))
+            return
         if parsed.path == "/api/health":
             respond_json(
                 self,
@@ -1393,7 +1865,9 @@ class AppHandler(SimpleHTTPRequestHandler):
                     "ok": True,
                     "time": iso_now(),
                     "sources": len(SOURCES),
+                    "signalSources": len(SIGNAL_SOURCES),
                     "categories": list(CATEGORIES.keys()),
+                    "signalCategories": list(SIGNAL_CATEGORIES.keys()),
                 },
             )
             return
@@ -1402,6 +1876,8 @@ class AppHandler(SimpleHTTPRequestHandler):
             self.path = "/index.html"
         elif parsed.path in {"/markets", "/markets/"}:
             self.path = "/markets.html"
+        elif parsed.path in {"/signals", "/signals/"}:
+            self.path = "/signals.html"
         return super().do_GET()
 
     def do_HEAD(self):
@@ -1410,6 +1886,8 @@ class AppHandler(SimpleHTTPRequestHandler):
             self.path = "/index.html"
         elif parsed.path in {"/markets", "/markets/"}:
             self.path = "/markets.html"
+        elif parsed.path in {"/signals", "/signals/"}:
+            self.path = "/signals.html"
         return super().do_HEAD()
 
     def log_message(self, format, *args):  # noqa: A002 - stdlib method signature.

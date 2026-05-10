@@ -1,6 +1,6 @@
 # World Signal
 
-A key-free prototype for a global news intelligence dashboard. It aggregates public RSS feeds for world news, economics, politics, sport, Portugal, and cybersecurity, pins stories to a world map using lightweight place detection, adds a market snapshot, and generates a narrated briefing in the browser.
+A key-free prototype for a global news intelligence dashboard. It aggregates public RSS feeds for world news, economics, politics, sport, Portugal, cybersecurity, trade, transport, defense AI, and conflict, pins stories to a world map using lightweight place detection, adds market and signal dashboards, and generates a narrated briefing in the browser.
 
 ## Run
 
@@ -42,6 +42,8 @@ docker run --rm -p 8080:8080 -e PORT=8080 world-signal
 - Includes a source health panel so failed or slow feeds are visible.
 - Adds a Yahoo-first market strip with Stooq fallback for major indexes, EUR/USD, Bitcoin, and gold.
 - Adds a full markets dashboard at `/markets` with sortable asset groups, OHLC data, volume, 52-week ranges, country bond yields, sparklines, and independent refresh.
+- Adds a mapped trade signals dashboard at `/signals` for Palantir-style defense AI, war and defense news, broad public defense posture zones, ship and port transport, air cargo, tariffs, exports, sanctions, and supply chain changes.
+- Keeps military awareness strategic: no exact live tracking of military ships, aircraft, or troop movements.
 - Produces an Atlas briefing and can read it aloud using the browser Speech Synthesis API.
 
 ## Architecture
@@ -49,9 +51,11 @@ docker run --rm -p 8080:8080 -e PORT=8080 world-signal
 - `app.py`: Python standard-library HTTP server, RSS aggregation, caching, summarization, geolocation, market data, JSON API.
 - `static/index.html`: dashboard shell.
 - `static/markets.html`: full-screen markets page shell.
+- `static/signals.html`: full-screen trade and defense signals page shell.
 - `static/styles.css`: responsive map-first interface.
 - `static/app.js`: Leaflet map, filters, markers, feed rendering, briefing narration.
 - `static/markets.js`: sortable markets table, collapsible groups, sparklines, and page refresh loop.
+- `static/signals.js`: mapped signal markers, searchable filters, collapsible sections, and independent refresh loop.
 
 ## API
 
@@ -60,6 +64,7 @@ docker run --rm -p 8080:8080 -e PORT=8080 world-signal
 - `GET /api/news?refresh=1`: force feed refresh.
 - `GET /api/briefing`: generated briefing.
 - `GET /api/markets`: expanded market snapshot with OHLC, volume, 52-week range, and chart history.
+- `GET /api/signals`: topic signals for defense AI, conflict, maritime transport, air transport, and trade.
 - `GET /api/health`: server status.
 
 ## Next Upgrades

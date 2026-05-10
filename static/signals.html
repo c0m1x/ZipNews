@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>World Signal Trade Signals</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body class="markets-page signals-page">
+    <div id="signalsApp" class="markets-app signals-app">
+      <header class="markets-topbar">
+        <a class="brand brand-link" href="/" aria-label="World Signal home">
+          <div class="brand-mark" aria-hidden="true"></div>
+          <div>
+            <h1>World Signal</h1>
+            <p id="signalsStatus">Loading trade signals</p>
+          </div>
+        </a>
+        <div class="markets-actions">
+          <a class="ghost-button nav-link" href="/">News Map</a>
+          <a class="ghost-button nav-link" href="/markets">Markets</a>
+          <button id="signalsRefreshButton" class="icon-button" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <main class="markets-main signals-main" aria-label="Trade and defense signals dashboard">
+        <section class="signals-map-shell" aria-label="Signals map">
+          <div class="signals-map-panel">
+            <div id="signalsMap" class="signals-map" aria-label="Signals world map"></div>
+            <nav class="signal-map-actions" aria-label="Map views">
+              <button class="map-action is-active" type="button" data-signal-view="world">World</button>
+              <button class="map-action" type="button" data-signal-view="europe">Europe</button>
+              <button class="map-action" type="button" data-signal-view="middle-east">Middle East</button>
+              <button class="map-action" type="button" data-signal-view="indo-pacific">Indo-Pacific</button>
+              <button class="map-action" id="signalsFitButton" type="button">Fit</button>
+            </nav>
+          </div>
+
+          <aside class="signal-focus-panel" aria-label="Selected signal">
+            <div class="signal-focus-heading">
+              <div>
+                <span class="eyebrow">Signal Radar</span>
+                <h2>Trade & Defense</h2>
+              </div>
+              <strong id="signalsMapCount">0</strong>
+            </div>
+            <div id="signalsActive" class="signals-active"></div>
+          </aside>
+        </section>
+
+        <section class="markets-overview signals-overview" aria-label="Signals overview">
+          <div class="market-stat">
+            <span>Signals</span>
+            <strong id="signalsCount">0</strong>
+          </div>
+          <div class="market-stat">
+            <span>Defense</span>
+            <strong id="signalsConflict">0</strong>
+          </div>
+          <div class="market-stat">
+            <span>Transport</span>
+            <strong id="signalsTransport">0</strong>
+          </div>
+          <div class="market-stat">
+            <span>Trade</span>
+            <strong id="signalsTrade">0</strong>
+          </div>
+          <div class="market-stat">
+            <span>Refresh</span>
+            <strong id="signalsCountdown">300s</strong>
+          </div>
+        </section>
+
+        <section class="signal-filter-bar" aria-label="Signal filters">
+          <div id="signalsCategoryFilters" class="segmented signal-segments"></div>
+          <label class="market-search signal-region">
+            <span>Region</span>
+            <select id="signalsRegionSelect"></select>
+          </label>
+          <label class="market-search signal-search">
+            <span>Search</span>
+            <input id="signalsSearch" type="search" placeholder="Palantir, Ukraine, Red Sea, cargo, tariffs..." />
+          </label>
+          <button id="signalsClearButton" class="ghost-button" type="button">Clear</button>
+        </section>
+
+        <section class="signal-ethics-note" aria-label="Military tracking note">
+          <strong>Strategic monitoring only.</strong>
+          <span>
+            This page does not track exact live positions of military ships, aircraft, or troops. Defense markers use broad public-reporting zones from news and official statements.
+          </span>
+        </section>
+
+        <section id="signalsBoard" class="markets-table signal-board" aria-live="polite"></section>
+      </main>
+
+      <footer class="markets-footer">
+        <span id="signalsSource">Google News topic RSS feeds for defense AI, conflict, shipping, aviation, and trade.</span>
+      </footer>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="/signals.js"></script>
+  </body>
+</html>

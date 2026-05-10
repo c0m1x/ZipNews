@@ -388,8 +388,14 @@ function renderMarkets(markets) {
       <strong>View all</strong>
       <small>Full board</small>
     </a>`;
+  const signalTile = `
+    <a class="market-tile market-link signal-strip-link" href="/signals">
+      <span>Signals</span>
+      <strong>Trade/War</strong>
+      <small>Intel board</small>
+    </a>`;
   if (!items.length) {
-    els.marketStrip.innerHTML = `<div class="market-tile"><span>Markets</span><strong>Unavailable</strong><small>Snapshot</small></div>${linkTile}`;
+    els.marketStrip.innerHTML = `<div class="market-tile"><span>Markets</span><strong>Unavailable</strong><small>Snapshot</small></div>${linkTile}${signalTile}`;
     return;
   }
   const stripItems = items.filter((item) => item.strip).slice(0, 6);
@@ -407,7 +413,7 @@ function renderMarkets(markets) {
           <small class="${className}">${changeText}</small>
         </div>`;
     })
-    .join("") + linkTile;
+    .join("") + linkTile + signalTile;
 }
 
 function renderMetrics(articles) {
