@@ -1004,14 +1004,18 @@ input {
   }
 
   .map-actions {
-    left: 10px;
-    right: 10px;
+    position: relative;
+    left: auto;
+    right: auto;
     bottom: auto;
-    top: calc(var(--mobile-map-height) - 58px);
+    top: auto;
+    width: calc(100% - 20px);
+    order: 1;
     transform: none;
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
     gap: 6px;
+    margin: 0 auto 10px;
     padding: 6px;
   }
 
@@ -1034,6 +1038,10 @@ input {
     min-height: 0;
     gap: 10px;
     padding: 10px;
+    transition:
+      padding 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
   }
 
   .brand {
@@ -1061,10 +1069,15 @@ input {
     grid-column: 1 / -1;
     display: flex;
     gap: 7px;
+    max-height: 86px;
     overflow-x: auto;
     overflow-y: hidden;
     padding-bottom: 2px;
     scroll-snap-type: x proximity;
+    transition:
+      max-height 180ms ease,
+      opacity 160ms ease,
+      padding 180ms ease;
   }
 
   .market-tile {
@@ -1109,11 +1122,11 @@ input {
   }
 
   .control-panel {
-    order: 3;
+    order: 2;
   }
 
   .intelligence-panel {
-    order: 2;
+    order: 3;
     min-height: 0;
     display: block;
   }
@@ -1295,7 +1308,8 @@ input {
   }
 
   .map-actions {
-    top: calc(var(--mobile-map-height) - 54px);
+    top: auto;
+    width: calc(100% - 16px);
   }
 
   .map-action {
@@ -1352,5 +1366,46 @@ input {
   .instrument-table td {
     grid-template-columns: minmax(84px, 34%) minmax(0, 1fr);
     gap: 8px;
+  }
+}
+
+@media (max-width: 820px) {
+  body.mobile-topbar-collapsed .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 7px 8px;
+    box-shadow: 0 8px 22px rgba(13, 23, 38, 0.14);
+  }
+
+  body.mobile-topbar-collapsed .brand-mark {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  body.mobile-topbar-collapsed .brand h1 {
+    font-size: 15px;
+  }
+
+  body.mobile-topbar-collapsed .brand p,
+  body.mobile-topbar-collapsed .auto-refresh {
+    display: none;
+  }
+
+  body.mobile-topbar-collapsed .market-strip {
+    max-height: 0;
+    padding: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  body.mobile-topbar-collapsed .top-actions {
+    display: flex;
+  }
+
+  body.mobile-topbar-collapsed #refreshButton {
+    width: auto;
+    min-height: 32px;
+    padding: 0 10px;
   }
 }

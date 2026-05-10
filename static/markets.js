@@ -296,11 +296,16 @@ async function fetchJSON(url) {
 
 function sourceText(status) {
   const sources = [];
-  if (status.sources && status.sources.stooq) {
-    sources.push("Stooq quotes");
-  }
-  if (status.sources && status.sources.yahoo) {
+  const quoteSources = status.quoteSources || {};
+  if (quoteSources.yahoo) {
+    sources.push("Yahoo quotes/history");
+  } else if (status.sources && status.sources.yahoo) {
     sources.push("Yahoo history");
+  }
+  if (quoteSources.stooq) {
+    sources.push("Stooq fallback quotes");
+  } else if (!quoteSources.yahoo && status.sources && status.sources.stooq) {
+    sources.push("Stooq quotes");
   }
   if (status.sources && status.sources.tradingView) {
     sources.push("TradingView bond yields");

@@ -14,6 +14,7 @@ const state = {
   refreshId: 0,
   lastFilterKey: "",
   autoRefreshTimer: null,
+  scrollTicking: false,
 };
 
 const els = {};
@@ -136,7 +137,26 @@ function bindEvents() {
       closeBriefing();
     }
   });
+  window.addEventListener("scroll", scheduleTopbarState, { passive: true });
+  window.addEventListener("resize", scheduleTopbarState);
+  scheduleTopbarState();
   configureAutoRefresh();
+}
+
+function scheduleTopbarState() {
+  if (state.scrollTicking) {
+    return;
+  }
+  state.scrollTicking = true;
+  requestAnimationFrame(() => {
+    state.scrollTicking = false;
+    syncTopbarState();
+  });
+}
+
+function syncTopbarState() {
+  const isMobile = window.matchMedia("(max-width: 820px)").matches;
+  document.body.classList.toggle("mobile-topbar-collapsed", isMobile && window.scrollY > 72);
 }
 
 async function refreshAll(force = false) {

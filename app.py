@@ -619,7 +619,7 @@ MARKET_INSTRUMENTS = [
     {"symbol": "BZ.F", "displaySymbol": "BZ", "label": "Brent Crude", "assetClass": "commodities", "yahoo": "BZ=F"},
     {"symbol": "NG.F", "displaySymbol": "NG", "label": "Natural Gas", "assetClass": "commodities", "yahoo": "NG=F"},
     {"symbol": "HG.F", "displaySymbol": "HG", "label": "Copper", "assetClass": "commodities", "yahoo": "HG=F", "stooqScale": 0.01},
-    {"symbol": "SI.F", "displaySymbol": "SI", "label": "Silver", "assetClass": "commodities", "yahoo": "SI=F"},
+    {"symbol": "SI.F", "displaySymbol": "SI", "label": "Silver", "assetClass": "commodities", "yahoo": "SI=F", "stooqScale": 0.01},
     {"symbol": "PL.F", "displaySymbol": "PL", "label": "Platinum", "assetClass": "commodities", "yahoo": "PL=F"},
     {"symbol": "ZC.F", "displaySymbol": "ZC", "label": "Corn", "assetClass": "commodities", "yahoo": "ZC=F"},
     {"symbol": "ZW.F", "displaySymbol": "ZW", "label": "Wheat", "assetClass": "commodities", "yahoo": "ZW=F"},
@@ -1091,13 +1091,16 @@ def fetch_yahoo_market_history(instrument):
     if range_high is None and high_values:
         range_high = max(high_values)
 
-    previous_close = parse_float(meta.get("previousClose") or meta.get("chartPreviousClose"))
+    previous_close = parse_float(meta.get("previousClose"))
     if previous_close is None and len(history) >= 2:
         previous_close = history[-2]["close"]
+    if previous_close is None:
+        previous_close = parse_float(meta.get("chartPreviousClose"))
 
     return {
         "currency": meta.get("currency"),
         "regularMarketPrice": parse_float(meta.get("regularMarketPrice")),
+        "regularMarketOpen": parse_float(meta.get("regularMarketOpen")),
         "previousClose": previous_close,
         "dayHigh": parse_float(meta.get("regularMarketDayHigh")),
         "dayLow": parse_float(meta.get("regularMarketDayLow")),
@@ -1154,6 +1157,14 @@ def build_session_history(item):
     return [{"date": date, "close": value} for value in values]
 
 
+def align_history_close(history, close):
+    if not history or close is None:
+        return history or []
+    aligned = [dict(point) for point in history]
+    aligned[-1]["close"] = close
+    return aligned
+
+
 def build_market_item(instrument, stooq_row, yahoo_data, tradingview_data=None):
     scale = instrument.get("stooqScale", 1)
     tradingview_data = tradingview_data or {}
@@ -1162,24 +1173,57 @@ def build_market_item(instrument, stooq_row, yahoo_data, tradingview_data=None):
         value = parse_float(stooq_row.get(field) if stooq_row else None)
         return value * scale if value is not None else None
 
-    close = scaled_row_value("Close")
-    open_price = scaled_row_value("Open")
-    high = scaled_row_value("High")
-    low = scaled_row_value("Low")
-    previous = scaled_row_value("Prev")
-    volume = parse_int(stooq_row.get("Volume") if stooq_row else None)
+    def first_available(*values):
+        for value in values:
+            if value is not None:
+                return value
+        return None
+
+    stooq_close = scaled_row_value("Close")
+    stooq_open = scaled_row_value("Open")
+    stooq_high = scaled_row_value("High")
+    stooq_low = scaled_row_value("Low")
+    stooq_previous = scaled_row_value("Prev")
+    stooq_volume = parse_int(stooq_row.get("Volume") if stooq_row else None)
+    yahoo_close = yahoo_data.get("regularMarketPrice")
+    yahoo_open = yahoo_data.get("regularMarketOpen")
+    yahoo_previous = yahoo_data.get("previousClose")
+    yahoo_high = yahoo_data.get("dayHigh")
+    yahoo_low = yahoo_data.get("dayLow")
+    yahoo_volume = yahoo_data.get("volume")
+    tv_close = parse_float(tradingview_data.get("close"))
+    tv_open = parse_float(tradingview_data.get("open"))
+    tv_high = parse_float(tradingview_data.get("high"))
+    tv_low = parse_float(tradingview_data.get("low"))
     tv_change_pct = parse_float(tradingview_data.get("change"))
     tv_change_abs = parse_float(tradingview_data.get("change_abs"))
 
-    close = close if close is not None else yahoo_data.get("regularMarketPrice")
-    previous = previous if previous is not None else yahoo_data.get("previousClose")
-    high = high if high is not None else yahoo_data.get("dayHigh")
-    low = low if low is not None else yahoo_data.get("dayLow")
-    volume = volume if volume is not None else yahoo_data.get("volume")
-    close = close if close is not None else parse_float(tradingview_data.get("close"))
-    open_price = open_price if open_price is not None else parse_float(tradingview_data.get("open"))
-    high = high if high is not None else parse_float(tradingview_data.get("high"))
-    low = low if low is not None else parse_float(tradingview_data.get("low"))
+    quote_source = "unavailable"
+    if yahoo_close is not None:
+        quote_source = "yahoo"
+        close = yahoo_close
+        open_price = first_available(yahoo_open, stooq_open, tv_open)
+        previous = first_available(yahoo_previous, stooq_previous)
+        high = first_available(yahoo_high, stooq_high)
+        low = first_available(yahoo_low, stooq_low)
+        volume = first_available(yahoo_volume, stooq_volume)
+    elif stooq_close is not None:
+        quote_source = "stooq"
+        close = stooq_close
+        open_price = first_available(stooq_open, yahoo_open, tv_open)
+        previous = first_available(stooq_previous, yahoo_previous)
+        high = first_available(stooq_high, yahoo_high)
+        low = first_available(stooq_low, yahoo_low)
+        volume = first_available(stooq_volume, yahoo_volume)
+    else:
+        quote_source = "tradingview" if tv_close is not None else quote_source
+        close = tv_close
+        open_price = first_available(tv_open, stooq_open, yahoo_open)
+        previous = first_available(yahoo_previous, stooq_previous)
+        high = first_available(tv_high, stooq_high, yahoo_high)
+        low = first_available(tv_low, stooq_low, yahoo_low)
+        volume = first_available(stooq_volume, yahoo_volume)
+
     if previous is None and close is not None and tv_change_abs is not None:
         previous = close - tv_change_abs
     if close is not None and high is not None:
@@ -1188,7 +1232,7 @@ def build_market_item(instrument, stooq_row, yahoo_data, tradingview_data=None):
         low = min(low, close)
 
     change_pct = None
-    if tv_change_pct is not None:
+    if quote_source == "tradingview" and tv_change_pct is not None:
         change_pct = tv_change_pct
     elif close is not None and previous not in (None, 0):
         change_pct = ((close - previous) / previous) * 100
@@ -1211,8 +1255,9 @@ def build_market_item(instrument, stooq_row, yahoo_data, tradingview_data=None):
         "changePct": change_pct,
         "volume": volume,
         "range52w": yahoo_data.get("range52w") or {"low": None, "high": None},
-        "history": yahoo_data.get("history") or [],
-        "historySource": "yahoo" if yahoo_data.get("history") else "tradingview" if tradingview_data else "session",
+        "history": align_history_close(yahoo_data.get("history") or [], close),
+        "historySource": "yahoo" if yahoo_data.get("history") else "session",
+        "quoteSource": quote_source,
         "date": stooq_row.get("Date") if stooq_row else None,
         "time": stooq_row.get("Time") if stooq_row else None,
         "strip": bool(instrument.get("strip")),
@@ -1231,6 +1276,7 @@ def fetch_markets(force=False):
         "ok": False,
         "error": "",
         "sources": {"stooq": False, "yahoo": False, "tradingView": False},
+        "quoteSources": {},
         "historyErrors": 0,
     }
     stooq_rows = {}
@@ -1274,6 +1320,10 @@ def fetch_markets(force=False):
             tradingview_rows.get((instrument.get("tradingView") or "").upper()),
         )
         items.append(item)
+
+    for item in items:
+        quote_source = item.get("quoteSource") or "unavailable"
+        status["quoteSources"][quote_source] = status["quoteSources"].get(quote_source, 0) + 1
 
     status["ok"] = any(item["value"] is not None for item in items)
     payload = {

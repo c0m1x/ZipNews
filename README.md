@@ -40,7 +40,7 @@ docker run --rm -p 8080:8080 -e PORT=8080 world-signal
 - Adds quick map views for World, Europe, Portugal, and the current visible story set.
 - Refreshes automatically every 10 minutes when the Auto toggle is on.
 - Includes a source health panel so failed or slow feeds are visible.
-- Adds a Stooq-based market strip for major indexes, EUR/USD, Bitcoin, and gold.
+- Adds a Yahoo-first market strip with Stooq fallback for major indexes, EUR/USD, Bitcoin, and gold.
 - Adds a full markets dashboard at `/markets` with sortable asset groups, OHLC data, volume, 52-week ranges, country bond yields, sparklines, and independent refresh.
 - Produces an Atlas briefing and can read it aloud using the browser Speech Synthesis API.
 
